@@ -1,0 +1,27 @@
+{
+    "name": "qingkuai-prettier-plugin",
+    "version": "1.0.0",
+    "license": "MIT",
+    "type": "module",
+    "scripts": {
+        "dev": "rollup -c -w",
+        "listen:index": "npx tsx --watch src/index.ts",
+        "build": "rimraf dist && tsc && rollup -c && rimraf dist/types"
+    },
+    "keywords": [
+        "formatting",
+        "qingkuai",
+        "prettier"
+    ],
+    "dependencies": {
+        "prettier": "^3.3.3"
+    },
+    "devDependencies": {
+        "rimraf": "^6.0.1",
+        "rollup": "^4.24.0",
+        "rollup-plugin-dts": "^6.1.1",
+        "rollup-plugin-esbuild": "^6.1.1",
+        "tsx": "^4.19.1"
+    },
+    "description": "prettier plugin for formatting .qk file"
+}

@@ -1,0 +1,10 @@
+.vscode
+.DS_Store
+.prettierrc
+
+src
+node_modules
+
+tsconfig.json
+pnpm-lock.yaml
+rollup.config.js
