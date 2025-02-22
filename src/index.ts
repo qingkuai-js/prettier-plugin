@@ -1,20 +1,29 @@
-import * as prettier from "prettier"
+import type { SupportLanguage, Parser, Printer } from "prettier"
 
-const sourceCode = `
-    const a =    10;
-    const b    = 20;
-    console.log ( a + b,)
-`
-const options: prettier.Options = {
-    parser: "babel",
-    semi: false,
-    tabWidth: 4,
-    printWidth: 100,
-    arrowParens: "avoid",
-    trailingComma: "none"
+import { embed } from "./printer"
+import { locEnd, locStart, parse } from "./parser"
+
+export const languages: Partial<SupportLanguage>[] = [
+    {
+        name: "qingkuai",
+        parsers: ["qingkuai"],
+        extensions: [".qk"]
+    }
+]
+
+export const parsers: Record<string, Parser> = {
+    qingkuai: {
+        parse,
+        locEnd,
+        locStart,
+        astFormat: "qingkuai-ast"
+    }
 }
 
-const result = await prettier.format(sourceCode, options)
-console.log(`The formatted code is as below:`)
-console.log("=".repeat(100), "\n")
-console.log(result)
+export const printers: Record<string, Printer> = {
+    "qingkuai-ast": {
+        embed,
+        print: () => "",
+        getVisitorKeys: () => ["children"]
+    }
+}

@@ -5,8 +5,9 @@
     "type": "module",
     "scripts": {
         "dev": "rollup -c -w",
-        "listen:index": "npx tsx --watch src/index.ts",
-        "build": "rimraf dist && npx tsc && rollup -c && rimraf dist/types"
+        "test": "npm run build-base && npx vitest --run",
+        "build": "cross-env BUILD_TYPES=1 npm run build-base",
+        "build-base": "rimraf dist && npx tsc && rollup -c && rimraf dist/types"
     },
     "keywords": [
         "formatting",
@@ -14,15 +15,19 @@
         "prettier"
     ],
     "dependencies": {
-        "prettier": "^3.3.3"
+        "prettier": "^3.3.3",
+        "qingkuai": "file:/users/lianggaoqiang/desktop/QingKuai/qingkuai"
     },
     "devDependencies": {
-        "tsx": "^4.19.1",
+        "@types/node": "^22.13.1",
+        "cross-env": "^7.0.3",
         "rimraf": "^6.0.1",
         "rollup": "^4.24.0",
-        "typescript": "^5.6.3",
         "rollup-plugin-dts": "^6.1.1",
-        "rollup-plugin-esbuild": "^6.1.1"
+        "rollup-plugin-esbuild": "^6.1.1",
+        "tsx": "^4.19.1",
+        "typescript": "^5.6.3",
+        "vitest": "^3.0.5"
     },
-    "description": "prettier plugin for formatting .qk file"
+    "description": "prettier plugin for .qk file formatting"
 }

@@ -2,18 +2,19 @@ import * as rollup from "rollup"
 import dts from "rollup-plugin-dts"
 import esbuild from "rollup-plugin-esbuild"
 
-export default rollup.defineConfig(commentLineArgs => {
-    const isWatchMode = commentLineArgs.watch
+export default rollup.defineConfig(() => {
+    const needBuildTypes = process.env.BUILD_TYPES === "1"
 
     const ret = [
         {
-            external: ["prettier"],
+            external: ["prettier", "qingkuai/compiler"],
             input: {
-                "index": "./src/index.ts",
+                index: "./src/index.ts"
             },
             output: {
                 dir: "dist",
                 format: "es",
+                sourcemap: true,
                 chunkFileNames: "chunks/[name].js"
             },
             plugins: [
@@ -24,10 +25,10 @@ export default rollup.defineConfig(commentLineArgs => {
         }
     ]
 
-    if (!isWatchMode) {
+    if (needBuildTypes) {
         ret.push({
             input: {
-                "index": "./dist/types/index.d.ts",
+                index: "./dist/types/index.d.ts"
             },
             output: {
                 dir: "dist",
