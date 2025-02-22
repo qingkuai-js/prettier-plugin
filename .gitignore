@@ -2,6 +2,6 @@
 .DS_Store
 
 dist
+test.ts
 node_modules
-
-./test.js
+sort-test.html
