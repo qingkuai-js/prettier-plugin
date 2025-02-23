@@ -7,13 +7,14 @@ import {
     isEmptyString,
     isNodeInTopScope,
     isPrettierIgnoreNode,
-    isScriptOrStyleNode
+    isScriptOrStyleNode,
+    isNodeRegardedInline
 } from "./util"
 import { displayCommentRE } from "./regular"
 import { parseTemplate } from "qingkuai/compiler"
 import { INLINE_BLOCK_TAGS, INLINE_TAGS } from "./constants"
 
-export let usingTypescript = false
+export let [usingTypescript, hasNonEmbedNode] = [false, false]
 
 export function parse(text: string, options: ParserOptions) {
     const defaultPosition = {
@@ -27,6 +28,8 @@ export function parse(text: string, options: ParserOptions) {
         parent: null,
         prev: void 0,
         next: void 0,
+        oriPrev: void 0,
+        oriNext: void 0,
         tag: "",
         display: "",
         content: "",
@@ -66,9 +69,12 @@ export function parse(text: string, options: ParserOptions) {
     const nodes = chunks.flat()
     ret.children = nodes
     ret.lastChild = lastElem(nodes)
+    hasNonEmbedNode = chunks[1].length > 0
 
     // 重新调整顶级节点的prev和next属性
     nodes.forEach((node, index) => {
+        node.oriPrev = node.prev
+        node.oriNext = node.next
         node.prev = nodes[index - 1]
         node.next = nodes[index + 1]
     })
@@ -78,6 +84,9 @@ export function parse(text: string, options: ParserOptions) {
         arr.forEach(node => {
             if (isNull(node.parent)) {
                 node.parent = ret
+            } else {
+                node.oriPrev = node.prev
+                node.oriNext = node.next
             }
             preprocess(node, options)
             node.children.forEach(child => {
@@ -181,7 +190,7 @@ function attachSpaceSensitive(node: TemplateNode) {
             return true
         }
 
-        if (sibling && !INLINE_TAGS.has(sibling.tag)) {
+        if (sibling && !isNodeRegardedInline(sibling)) {
             return false
         }
 
@@ -192,7 +201,7 @@ function attachSpaceSensitive(node: TemplateNode) {
                 isNodeInTopScope(node) ||
                 isScriptOrStyleNode(node) ||
                 ( node.parent && isPrettierIgnoreNode(node)) ||
-                (!INLINE_TAGS.has(node.parent?.tag) && !INLINE_BLOCK_TAGS.has(node.parent?.tag))
+                (!isNodeRegardedInline(node.parent) && !INLINE_BLOCK_TAGS.has(node.parent?.tag))
             )
         ) {
             return false

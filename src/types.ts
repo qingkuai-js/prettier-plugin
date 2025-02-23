@@ -6,13 +6,15 @@ export type PrintFunc = (path: AstPath) => Doc
 export type TemplateNode = {
     children: TemplateNode[]
     parent: TemplateNode | null
-    prev: TemplateNode | undefined
-    next: TemplateNode | undefined
     display: string
     hasLeadingSpace: boolean
     hasTrailingSpace: boolean
     leadingSpaceSensitive: boolean
     trailingSpaceSensitive: boolean
+    prev: TemplateNode | undefined
+    next: TemplateNode | undefined
+    oriPrev: TemplateNode | undefined
+    oriNext: TemplateNode | undefined
     lastChild: TemplateNode | undefined
 } & Omit<QingKuaiTemplateNode, "children" | "parent" | "prev" | "next">
 

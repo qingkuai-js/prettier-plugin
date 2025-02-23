@@ -1,7 +1,7 @@
 import type { TemplateNode } from "./types"
 
-import { doc, Options } from "prettier"
-import { HARDLINE_TAGS, PRESERVE_TAGS } from "./constants"
+import { doc } from "prettier"
+import { HARDLINE_TAGS, INLINE_TAGS, PRESERVE_TAGS } from "./constants"
 
 export function isNull(v: any): v is null {
     return v === null
@@ -52,7 +52,7 @@ export function getLastDescendant(node: TemplateNode): TemplateNode {
 
 // 判断节点是否只有一个只有空白字符的文本节点
 export function isDanlingSpaceNode(node: TemplateNode) {
-    if (node.children.length > 1) {
+    if (node.isSelfClosing || node.children.length > 1) {
         return false
     }
     if (!node.children.length) {
@@ -76,8 +76,12 @@ export function preferHardlineAsLeadingSpace(node: TemplateNode) {
     )
 }
 
+export function isNodeRegardedInline(node: TemplateNode | undefined | null) {
+    return node && (isEmptyString(node.tag) || INLINE_TAGS.has(node.tag))
+}
+
 export function forceNextEmptyLine(node: TemplateNode | undefined) {
-    return node && node.next && node.loc.end.line + 1 < node.next.loc.start.line
+    return node && node.oriNext && node.loc.end.line + 1 < node.oriNext.loc.start.line
 }
 
 export function preferHardlineAsTrailingSpace(node: TemplateNode) {
@@ -92,20 +96,20 @@ export function hasTrailingLineBreak(node: TemplateNode) {
     if (!node.hasTrailingSpace) {
         return false
     }
-    if (node.next) {
-        return node.next.loc.start.line > node.loc.end.line
+    if (node.oriNext) {
+        return node.oriNext.loc.start.line > node.loc.end.line
     }
-    return !isNodeInTopScope(node) || node.parent!.endTagStartPos.line > node.loc.end.line
+    return !isNodeInTopScope(node) && node.parent!.endTagStartPos.line > node.loc.end.line
 }
 
 export function hasLeadingLineBreak(node: TemplateNode) {
     if (!node.hasLeadingSpace) {
         return false
     }
-    if (node.prev) {
-        return node.prev.loc.end.line < node.loc.start.line
+    if (node.oriPrev) {
+        return node.oriPrev.loc.end.line < node.loc.start.line
     }
-    return !isNodeInTopScope(node) || node.parent!.startTagEndPos.line < node.loc.start.line
+    return !isNodeInTopScope(node) && node.parent!.startTagEndPos.line < node.loc.start.line
 }
 
 // 由于使用模板字符串(反引号)书写源码时会保留所有空格，这导致在想要书写带有缩进的代码字符串时，

@@ -1,5 +1,5 @@
 import type { AstPath, Doc, Options, ParserOptions } from "prettier"
-import type { EmbedReturnValue, EmbedTextToDocFunc, PrintFunc, TemplateNode } from "./types"
+import type { EmbedReturnValue, EmbedTextToDocFunc, PrintFunc, TemplateNode } from "../types"
 
 import {
     lastElem,
@@ -14,37 +14,14 @@ import {
     isPrettierIgnoreNode,
     replaceWithLiteralLine,
     preferHardlineAsLeadingSpace
-} from "./util"
+} from "../util"
 import { doc } from "prettier"
-import { usingTypescript } from "./parser"
-import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "./constants"
+import { templateEmbeddedLangTag } from "../regular"
+import { hasNonEmbedNode, usingTypescript } from "../parser"
+import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "../constants"
 import { util as qingkuaiCompilerUtil } from "qingkuai/compiler"
-import { templateEmbeddedLangTag } from "./regular"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
-
-// export function print(path: AstPath, options: ParserOptions, print: PrintFunc) {
-//     const node: TemplateNode = path.getNode()
-
-//     if (!node.parent) {
-//         return printChildren(path, print)
-//     }
-
-//     if (isEmptyString(node.tag)) {
-//         return fill([printOpeningTagPrefix(node), node.content.trim(), printClosingTagSuffix(node)])
-//     }
-
-//     if (node.tag === "!") {
-//         const originalText = options.originalText.slice(...node.range)
-//         return [
-//             printOpeningTagPrefix(node),
-//             replaceWithLiteralLine(originalText),
-//             printClosingTagSuffix(node)
-//         ]
-//     }
-
-//     return printElement(path, options, print)
-// }
 
 export function embed(path: AstPath, _options: Options): EmbedReturnValue {
     const node: TemplateNode = path.getNode()
@@ -55,10 +32,6 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
     return async (textToDoc, print) => {
         if (!node.parent) {
             return printChildren(path, print)
-        }
-
-        if (isEmptyString(node.tag)) {
-            return await printContentOfTextNode(node, textToDoc)
         }
 
         if (
@@ -85,6 +58,8 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
                 case "lang-less":
                     parser = "less"
                     break
+                default:
+                    parser = "css"
             }
 
             const noContent = !node.content.trim().length
@@ -97,6 +72,10 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
                 printClosingTag(node),
                 printClosingTagSuffix(node)
             ]
+        }
+
+        if (isEmptyString(node.tag)) {
+            return await printContentOfTextNode(node, textToDoc, options)
         }
 
         if (node.tag === "!") {
@@ -179,14 +158,164 @@ async function printElement(
     ])
 }
 
-async function printContentOfTextNode(node: TemplateNode, textToDoc: EmbedTextToDocFunc) {
+async function printAttribute(
+    node: TemplateNode,
+    options: ParserOptions,
+    textToDoc: EmbedTextToDocFunc
+) {
+    if (!node.attributes.length) {
+        return node.isSelfClosing ? " " : ""
+    }
+
+    const printedAttribute: Doc[] = []
+
+    for (const attr of node.attributes) {
+        if (attr.quote === "none") {
+            return attr.key.raw
+        }
+
+        let value: Doc = attr.value.raw
+        let quote = options.singleQuote ? "'" : '"'
+
+        if (attr.quote === "curly") {
+            value = await printInterpolation(textToDoc, value, {
+                ...options,
+                __isQingkuaiForDirective: attr.key.raw === "#for"
+            })
+        } else {
+            if (attr.value.raw.includes(quote)) {
+                quote = options.originalText[attr.value.loc.start.index - 1]
+            }
+            value = [quote, replaceWithLiteralLine(value), quote]
+        }
+
+        printedAttribute.push(group([attr.key.raw, "=", value]))
+    }
+
+    const forceNotToBreak =
+        node.tag === "script" &&
+        node.attributes.length === 1 &&
+        node.attributes[0].key.raw === "src"
+    const gap = options.singleAttributePerLine && node.attributes[1] ? hardline : line
+    const parts: Doc[] = [indent([forceNotToBreak ? " " : line, join(gap, printedAttribute)])]
+
+    if (
+        forceNotToBreak ||
+        options.bracketSameLine ||
+        needsToBorrowParentOpeningTagEndMarker(node.children[0]) ||
+        (node.isSelfClosing && needsToBorrowLastChildClosingTagEndMarker(node.parent))
+    ) {
+        return parts.concat(node.isSelfClosing ? " " : "")
+    }
+
+    return parts.concat(node.isSelfClosing ? line : softline)
+}
+
+function printChildren(path: AstPath, print: PrintFunc) {
+    const node = path.getNode()
+    if (forceBreakChildren(node)) {
+        return [
+            breakParent,
+
+            ...path.map((childPath: AstPath) => {
+                const child: TemplateNode = childPath.getNode()!
+                const betweenLine = child.prev ? printBetweenLine(child) : ""
+                return [
+                    betweenLine
+                        ? [betweenLine, forceNextEmptyLine(child.prev) ? hardline : ""]
+                        : "",
+                    print(childPath)
+                ]
+            }, "children")
+        ]
+    }
+
+    const groupIds = node.children.map(() => Symbol())
+
+    return path.map((childPath: AstPath, childIndex) => {
+        const child: TemplateNode = childPath.getNode()
+
+        if (isTextOrCommentNode(child)) {
+            if (isTextOrCommentNode(child.prev)) {
+                const prevBetweenLine = printBetweenLine(child)
+                if (prevBetweenLine) {
+                    if (forceNextEmptyLine(child.prev)) {
+                        return [hardline, hardline, print(childPath)]
+                    }
+                    return [prevBetweenLine, print(childPath)]
+                }
+            }
+            return print(childPath)
+        }
+
+        let [isEmbedStyle, isEmbedScript] = [false, false]
+        child.isEmbedded && (isEmbedStyle = !(isEmbedScript = /-[jt]s$/.test(child.tag)))
+
+        const prevParts: Doc = []
+        const nextParts: Doc = []
+        const leadingParts: Doc = []
+        const trailingParts: Doc = []
+        const prevBetweenLine = child.prev ? printBetweenLine(child) : ""
+        const nextBetweenLine = child.next ? printBetweenLine(child.next) : ""
+
+        if (prevBetweenLine) {
+            if (forceNextEmptyLine(child.prev) || isEmbedStyle) {
+                prevParts.push(hardline, hardline)
+            } else if (prevBetweenLine === hardline) {
+                prevParts.push(hardline)
+            } else if (isTextOrCommentNode(child.prev)) {
+                leadingParts.push(prevBetweenLine)
+            } else {
+                leadingParts.push(
+                    ifBreak("", softline, {
+                        groupId: groupIds[childIndex - 1]
+                    })
+                )
+            }
+        }
+
+        if (nextBetweenLine) {
+            if (forceNextEmptyLine(child)) {
+                if (isTextOrCommentNode(child.next)) {
+                    nextParts.push(hardline, hardline)
+                }
+            } else if (nextBetweenLine === hardline) {
+                if (isEmbedScript && hasNonEmbedNode) {
+                    nextParts.push(hardline)
+                }
+                if (isTextOrCommentNode(child.next)) {
+                    nextParts.push(hardline)
+                }
+            } else {
+                trailingParts.push(nextBetweenLine)
+            }
+        }
+
+        return [
+            ...prevParts,
+            group([
+                ...leadingParts,
+                group([print(childPath), ...trailingParts], {
+                    id: groupIds[childIndex]
+                })
+            ]),
+            ...nextParts
+        ]
+    }, "children")
+}
+
+async function printContentOfTextNode(
+    node: TemplateNode,
+    textToDoc: EmbedTextToDocFunc,
+    options: ParserOptions
+) {
     const docs: Doc[] = [printOpeningTagPrefix(node)]
 
     const mergeWhitespace = (str: string) => {
         return join(line, str.replace(/\s+/g, " ").split(" "))
     }
 
-    for (let content = node.content.trim(); content.length; ) {
+    for (let content = node.content[node.next ? "trimStart" : "trim"](); content.length; ) {
         const startBracketIndex = content.indexOf("{")
         if (startBracketIndex === -1) {
             docs.push(mergeWhitespace(content))
@@ -196,16 +325,63 @@ async function printContentOfTextNode(node: TemplateNode, textToDoc: EmbedTextTo
         }
 
         const endBracketIndex = qingkuaiCompilerUtil.findEndBracket(content, startBracketIndex + 1)
-        docs.push(
-            await printInterpolation(
-                textToDoc,
-                content.slice(startBracketIndex + 1, endBracketIndex)
-            )
-        )
+        const interpolationText = content.slice(startBracketIndex + 1, endBracketIndex)
+        docs.push(await printInterpolation(textToDoc, interpolationText, options))
         content = content.slice(endBracketIndex + 1)
     }
 
     return fill([...docs, printClosingTagSuffix(node)])
+}
+
+async function printInterpolation(
+    textToDoc: EmbedTextToDocFunc,
+    text: string,
+    options: ParserOptions
+) {
+    const formatedDoc = await textToDoc(text, {
+        __embeddedInHtml: true,
+        __isInHtmlAttribute: true,
+        __isQingkuaiForDirective: options.__isQingkuaiForDirective,
+        parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
+    })
+
+    if (options.spaceAroundInterpolation) {
+        return group(["{", ifBreak([indent([line, formatedDoc]), line], ` ${formatedDoc} `), "}"])
+    }
+
+    return group(["{", ifBreak([indent([softline, formatedDoc]), softline], formatedDoc), "}"])
+}
+
+function printBetweenLine(node: TemplateNode) {
+    const [prevNode, nextNode] = [node.prev!, node]
+
+    // prettier-ignore
+    if (
+        (needsToBorrowPrevClosingTagEndMarker(nextNode) && prevNode.isSelfClosing) ||
+        (
+            needsToBorrowNextOpeningTagStartMarker(prevNode) &&
+            (nextNode.isSelfClosing || nextNode.children.length || nextNode.attributes.length)
+        )
+    ) {
+        return ""
+    }
+
+    // prettier-ignore
+    if (
+        !nextNode.leadingSpaceSensitive ||
+        preferHardlineAsLeadingSpace(nextNode) ||
+        (
+            prevNode.lastChild &&
+            prevNode.lastChild.lastChild &&
+            needsToBorrowPrevClosingTagEndMarker(nextNode) &&
+            needsToBorrowParentClosingTagStartMarker(prevNode.lastChild) &&
+            needsToBorrowParentClosingTagStartMarker(prevNode.lastChild.lastChild)
+        )
+    ){
+        return hardline
+    }
+
+    return nextNode.hasLeadingSpace ? line : softline
 }
 
 function forceBreakContent(node: TemplateNode) {
@@ -327,188 +503,12 @@ function printOpeningTagEnd(node: TemplateNode) {
     return needsToBorrowParentOpeningTagEndMarker(node.children[0]) ? "" : ">"
 }
 
-async function printAttribute(
-    node: TemplateNode,
-    options: ParserOptions,
-    textToDoc: EmbedTextToDocFunc
-) {
-    if (!node.attributes.length) {
-        return node.isSelfClosing ? " " : ""
-    }
-
-    const printedAttribute: Doc[] = []
-
-    for (const attr of node.attributes) {
-        if (attr.quote === "none") {
-            return attr.key.raw
-        }
-
-        let value: Doc = attr.value.raw
-        let quote = options.singleQuote ? "'" : '"'
-
-        if (attr.quote === "curly") {
-            value = await printInterpolation(textToDoc, value)
-        } else {
-            if (attr.value.raw.includes(quote)) {
-                quote = options.originalText[attr.value.loc.start.index - 1]
-            }
-            value = [quote, replaceWithLiteralLine(value), quote]
-        }
-
-        printedAttribute.push(group([attr.key.raw, "=", value]))
-    }
-
-    const forceNotToBreak =
-        node.tag === "script" &&
-        node.attributes.length === 1 &&
-        node.attributes[0].key.raw === "src"
-    const gap = options.singleAttributePerLine && node.attributes[1] ? hardline : line
-    const parts: Doc[] = [indent([forceNotToBreak ? " " : line, join(gap, printedAttribute)])]
-
-    if (
-        forceNotToBreak ||
-        options.bracketSameLine ||
-        needsToBorrowParentOpeningTagEndMarker(node.children[0]) ||
-        (node.isSelfClosing && needsToBorrowLastChildClosingTagEndMarker(node.parent))
-    ) {
-        return parts.concat(node.isSelfClosing ? " " : "")
-    }
-
-    return parts.concat(node.isSelfClosing ? line : softline)
-}
-
-function printChildren(path: AstPath, print: PrintFunc) {
-    const node = path.getNode()
-    if (forceBreakChildren(node)) {
-        return [
-            breakParent,
-
-            ...path.map((childPath: AstPath) => {
-                const child: TemplateNode = childPath.getNode()!
-                const betweenLine = child.prev ? printBetweenLine(child) : ""
-                return [
-                    betweenLine
-                        ? [betweenLine, forceNextEmptyLine(child.prev) ? hardline : ""]
-                        : "",
-                    print(childPath)
-                ]
-            }, "children")
-        ]
-    }
-
-    const groupIds = node.children.map(() => Symbol())
-
-    return path.map((childPath: AstPath, childIndex) => {
-        const child: TemplateNode = childPath.getNode()
-
-        if (isTextOrCommentNode(child)) {
-            if (isTextOrCommentNode(child.prev)) {
-                const prevBetweenLine = printBetweenLine(child)
-                if (prevBetweenLine) {
-                    if (forceNextEmptyLine(child.prev)) {
-                        return [hardline, hardline, print(childPath)]
-                    }
-                    return [prevBetweenLine, print(childPath)]
-                }
-            }
-            return print(childPath)
-        }
-
-        let [isEmbedStyle, isEmbedScript] = [false, false]
-        child.isEmbedded && (isEmbedStyle = !(isEmbedScript = /-[jt]s$/.test(child.tag)))
-
-        const prevParts: Doc = []
-        const nextParts: Doc = []
-        const leadingParts: Doc = []
-        const trailingParts: Doc = []
-        const prevBetweenLine = child.prev ? printBetweenLine(child) : ""
-        const nextBetweenLine = child.next ? printBetweenLine(child.next) : ""
-
-        if (prevBetweenLine) {
-            if (forceNextEmptyLine(child.prev) || isEmbedStyle) {
-                prevParts.push(hardline, hardline)
-            } else if (prevBetweenLine === hardline) {
-                prevParts.push(hardline)
-            } else if (isTextOrCommentNode(child.prev)) {
-                leadingParts.push(prevBetweenLine)
-            } else {
-                leadingParts.push(
-                    ifBreak("", softline, {
-                        groupId: groupIds[childIndex - 1]
-                    })
-                )
-            }
-        }
-
-        if (nextBetweenLine) {
-            if (forceNextEmptyLine(child)) {
-                if (isTextOrCommentNode(child.next)) {
-                    nextParts.push(hardline, hardline)
-                }
-            } else if (nextBetweenLine === hardline) {
-                if (isEmbedScript || isTextOrCommentNode(child.next)) {
-                    nextParts.push(hardline)
-                }
-            } else {
-                trailingParts.push(nextBetweenLine)
-            }
-        }
-
-        return [
-            ...prevParts,
-            group([
-                ...leadingParts,
-                group([print(childPath), ...trailingParts], {
-                    id: groupIds[childIndex]
-                })
-            ]),
-            ...nextParts
-        ]
-    }, "children")
-}
-
-async function printInterpolation(textToDoc: EmbedTextToDocFunc, text: string) {
-    const formatedDoc = await textToDoc(text, {
-        parser: usingTypescript ? "__ts_expression" : "__js_expression"
-    })
-    return group(["{", ifBreak([indent([softline, formatedDoc]), softline], formatedDoc), "}"])
-}
-
-function printBetweenLine(node: TemplateNode) {
-    const [prevNode, nextNode] = [node.prev!, node]
-
-    // prettier-ignore
-    if (
-        (needsToBorrowPrevClosingTagEndMarker(nextNode) && prevNode.isSelfClosing) ||
-        (
-            needsToBorrowNextOpeningTagStartMarker(prevNode) &&
-            (nextNode.isSelfClosing || nextNode.children.length || nextNode.attributes.length)
-        )
-    ) {
-        return ""
-    }
-
-    // prettier-ignore
-    if (
-        !nextNode.leadingSpaceSensitive ||
-        preferHardlineAsLeadingSpace(nextNode) ||
-        (
-            prevNode.lastChild &&
-            prevNode.lastChild.lastChild &&
-            needsToBorrowPrevClosingTagEndMarker(nextNode) &&
-            needsToBorrowParentClosingTagStartMarker(prevNode.lastChild) &&
-            needsToBorrowParentClosingTagStartMarker(prevNode.lastChild.lastChild)
-        )
-    ){
-        return hardline
-    }
-
-    return nextNode.hasLeadingSpace ? line : softline
-}
-
 function needsToBorrowNextOpeningTagStartMarker(node: TemplateNode | undefined | null) {
+    if (!node || isTextOrCommentNode(node.next)) {
+        return false
+    }
+
     return !!(
-        node &&
         node.next &&
         !node.hasTrailingSpace &&
         isTextOrCommentNode(node) &&
@@ -539,7 +539,7 @@ function needsToBorrowParentClosingTagStartMarker(node: TemplateNode | undefined
 }
 
 function needsToBorrowLastChildClosingTagEndMarker(node: TemplateNode | undefined | null) {
-    if (!node) {
+    if (!node || isTextOrCommentNode(node.lastChild)) {
         return false
     }
 
@@ -552,5 +552,8 @@ function needsToBorrowLastChildClosingTagEndMarker(node: TemplateNode | undefine
 }
 
 function needsToBorrowPrevClosingTagEndMarker(node: TemplateNode | undefined | null) {
-    return !!(node && node.prev && node.leadingSpaceSensitive && !node.hasLeadingSpace)
+    if (!node || isTextOrCommentNode(node.prev)) {
+        return false
+    }
+    return !!(node.prev && node.leadingSpaceSensitive && !node.hasLeadingSpace)
 }
