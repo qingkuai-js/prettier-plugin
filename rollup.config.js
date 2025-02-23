@@ -7,7 +7,12 @@ export default rollup.defineConfig(() => {
 
     const ret = [
         {
-            external: ["prettier", "qingkuai/compiler"],
+            external: [
+                "prettier",
+                "qingkuai/compiler",
+                "prettier/plugins/babel",
+                "prettier/plugins/estree"
+            ],
             input: {
                 index: "./src/index.ts"
             },

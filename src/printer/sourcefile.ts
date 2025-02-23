@@ -16,8 +16,8 @@ import {
     preferHardlineAsLeadingSpace
 } from "../util"
 import { doc } from "prettier"
-import { templateEmbeddedLangTag } from "../regular"
 import { hasNonEmbedNode, usingTypescript } from "../parser"
+import { templateEmbeddedLangTag } from "../regular"
 import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "../constants"
 import { util as qingkuaiCompilerUtil } from "qingkuai/compiler"
 
@@ -178,10 +178,11 @@ async function printAttribute(
         let quote = options.singleQuote ? "'" : '"'
 
         if (attr.quote === "curly") {
-            value = await printInterpolation(textToDoc, value, {
-                ...options,
-                __isQingkuaiForDirective: attr.key.raw === "#for"
-            })
+            if (attr.key.raw === "#for") {
+                value = await printForDirective(textToDoc, value, options)
+            } else {
+                value = await printInterpolation(textToDoc, value, options)
+            }
         } else {
             if (attr.value.raw.includes(quote)) {
                 quote = options.originalText[attr.value.loc.start.index - 1]
@@ -338,18 +339,53 @@ async function printInterpolation(
     text: string,
     options: ParserOptions
 ) {
-    const formatedDoc = await textToDoc(text, {
-        __embeddedInHtml: true,
-        __isInHtmlAttribute: true,
-        __isQingkuaiForDirective: options.__isQingkuaiForDirective,
-        parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
-    })
+    const interpolationDoc = await textToDoc(text, getInterpolationFormatOptions())
 
+    let formatedDoc: Doc
     if (options.spaceAroundInterpolation) {
-        return group(["{", ifBreak([indent([line, formatedDoc]), line], ` ${formatedDoc} `), "}"])
+        formatedDoc = ifBreak(
+            [indent([line, interpolationDoc]), line],
+            [" ", interpolationDoc, " "]
+        )
+    } else {
+        formatedDoc = ifBreak([indent([softline, interpolationDoc]), softline], interpolationDoc)
     }
 
-    return group(["{", ifBreak([indent([softline, formatedDoc]), softline], formatedDoc), "}"])
+    return group(["{", formatedDoc, "}"])
+}
+
+async function printForDirective(
+    textToDoc: EmbedTextToDocFunc,
+    text: string,
+    options: ParserOptions
+) {
+    const textToDocOptions = getInterpolationFormatOptions()
+    const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfSC(text, " of ")
+    const contextDoc = await textToDoc(text.slice(0, ofKeywordIndex), {
+        __isQingkuaiForDirective: true,
+        ...textToDocOptions
+    })
+    const interpolationDoc = [
+        contextDoc,
+        " of",
+        line,
+        await textToDoc(text.slice(ofKeywordIndex + 4), textToDocOptions)
+    ]
+
+    let formatedInterpolationDoc: Doc
+    if (options.spaceAroundInterpolation) {
+        formatedInterpolationDoc = ifBreak(
+            [indent([line, interpolationDoc]), line],
+            [" ", interpolationDoc, " "]
+        )
+    } else {
+        formatedInterpolationDoc = ifBreak(
+            [indent([softline, interpolationDoc]), softline],
+            interpolationDoc
+        )
+    }
+
+    return group(["{", formatedInterpolationDoc, "}"])
 }
 
 function printBetweenLine(node: TemplateNode) {
@@ -501,6 +537,14 @@ function printOpeningTagStart(node: TemplateNode) {
 
 function printOpeningTagEnd(node: TemplateNode) {
     return needsToBorrowParentOpeningTagEndMarker(node.children[0]) ? "" : ">"
+}
+
+function getInterpolationFormatOptions() {
+    return {
+        __embeddedInHtml: true,
+        __isInHtmlAttribute: true,
+        parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
+    }
 }
 
 function needsToBorrowNextOpeningTagStartMarker(node: TemplateNode | undefined | null) {
