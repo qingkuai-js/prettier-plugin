@@ -1,6 +1,6 @@
 import type { TemplateNode } from "./types"
 
-import { doc } from "prettier"
+import { doc, ParserOptions } from "prettier"
 import { HARDLINE_TAGS, INLINE_TAGS, PRESERVE_TAGS } from "./constants"
 
 export function isNull(v: any): v is null {

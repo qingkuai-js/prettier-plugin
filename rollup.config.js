@@ -33,7 +33,7 @@ export default rollup.defineConfig(() => {
     if (needBuildTypes) {
         ret.push({
             input: {
-                index: "./dist/types/index.d.ts"
+                index: "./dist/types/src/index.d.ts"
             },
             output: {
                 dir: "dist",

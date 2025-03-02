@@ -56,5 +56,25 @@ export const options: Record<string, SupportOption> = {
         default: false,
         category: "format",
         description: "insert spaces at both ends of interpolation block"
+    },
+    componentTagFormatPreference: {
+        type: "choice",
+        default: "camel",
+        category: "format",
+        choices: [
+            {
+                value: "camel",
+                description: "prefer camel tag format, likes: <MyComponent></MyComponent>"
+            },
+            {
+                value: "kebab",
+                description: "prefer kebab tag format, likes: <my-component></my-component>"
+            },
+            {
+                value: "none",
+                description: "all tag format that you input will be preserved"
+            }
+        ],
+        description: "your prefered fomat of element tag in the qingkuai template"
     }
 }

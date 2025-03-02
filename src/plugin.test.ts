@@ -3,7 +3,7 @@ import type { ParserOptions } from "prettier"
 import { resolve } from "path"
 import * as prettier from "prettier"
 import { formatSourceCode } from "./util"
-import { describe, it, expect, test } from "vitest"
+import { it, expect, test } from "vitest"
 
 const outPath = resolve(import.meta.dirname, "../dist/index.js")
 
@@ -303,4 +303,21 @@ it("shoule insert whitespace before self-closing tag closing tag end marker", as
             />
         `)
     )
+})
+
+test("prefered element tag format", async () => {
+    expect(await format("<my-component></my-component>")).toBe("<MyComponent></MyComponent>")
+
+    expect(
+        await format("<my-component></my-component>", {
+            componentTagFormatPreference: "kebab"
+        })
+    ).toBe("<my-component></my-component>")
+
+    // just first character is lower case, dont format
+    expect(
+        await format("<Test></Test>", {
+            componentTagFormatPreference: "kebab"
+        })
+    ).toBe("<Test></Test>")
 })

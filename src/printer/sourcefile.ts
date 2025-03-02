@@ -19,7 +19,7 @@ import { doc } from "prettier"
 import { hasNonEmbedNode, usingTypescript } from "../parser"
 import { templateEmbeddedLangTag } from "../regular"
 import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "../constants"
-import { util as qingkuaiCompilerUtil } from "qingkuai/compiler"
+import { util as qingkuaiCompilerUtil, util } from "qingkuai/compiler"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
 
@@ -69,7 +69,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
                 group(await printOpeningTag(node, options, textToDoc)),
                 indent([noContent ? "" : hardline, formatedDoc]),
                 noContent ? "" : hardline,
-                printClosingTag(node),
+                printClosingTag(node, options),
                 printClosingTagSuffix(node)
             ]
         }
@@ -116,7 +116,7 @@ async function printElement(
 
     const printTag = async (doc: Doc) => {
         const openingTag = await printOpeningTag(node, options, textToDoc)
-        return group([group(openingTag), doc, printClosingTag(node)])
+        return group([group(openingTag), doc, printClosingTag(node, options)])
     }
 
     const printLineAfterChildren = () => {
@@ -490,14 +490,6 @@ function printOpeningTagPrefix(node: TemplateNode) {
     return ""
 }
 
-function printClosingTag(node: TemplateNode): Doc[] {
-    // prettier-ignore
-    return [
-        node.isSelfClosing ? "" : printClosingTagStart(node),
-        printClosingTagEnd(node)
-    ]
-}
-
 function printClosingTagEndMarker(node: TemplateNode) {
     return node.isSelfClosing ? "/>" : ">"
 }
@@ -515,17 +507,25 @@ async function printOpeningTag(
     textToDoc: EmbedTextToDocFunc
 ) {
     return [
-        printOpeningTagStart(node),
+        printOpeningTagStart(node, options),
         await printAttribute(node, options, textToDoc),
         node.isSelfClosing ? "" : printOpeningTagEnd(node)
     ]
 }
 
-function printClosingTagStart(node: TemplateNode) {
+function printClosingTag(node: TemplateNode, options: ParserOptions): Doc[] {
+    // prettier-ignore
+    return [
+        node.isSelfClosing ? "" : printClosingTagStart(node, options),
+        printClosingTagEnd(node)
+    ]
+}
+
+function printClosingTagStart(node: TemplateNode, options: ParserOptions) {
     if (needsToBorrowParentClosingTagStartMarker(lastElem(node.children))) {
         return ""
     }
-    return [printClosingTagPrefix(node), `</${node.tag}`]
+    return [printClosingTagPrefix(node), `</${getPreferedTag(node, options)}`]
 }
 
 function printClosingTagEnd(node: TemplateNode) {
@@ -538,9 +538,9 @@ function printClosingTagEnd(node: TemplateNode) {
     return [printClosingTagEndMarker(node), printClosingTagSuffix(node)]
 }
 
-function printOpeningTagStart(node: TemplateNode) {
+function printOpeningTagStart(node: TemplateNode, options: ParserOptions) {
     if (!node.prev || !needsToBorrowNextOpeningTagStartMarker(node.prev)) {
-        return [printOpeningTagPrefix(node), `<${node.tag}`]
+        return [printOpeningTagPrefix(node), `<${getPreferedTag(node, options)}`]
     }
     return ""
 }
@@ -555,6 +555,19 @@ function getInterpolationFormatOptions() {
         __isInHtmlAttribute: true,
         parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
     }
+}
+
+function getPreferedTag(node: TemplateNode, options: ParserOptions) {
+    if (
+        !node.componentTag ||
+        util.isEmbededLanguageTag(node.tag) ||
+        options.componentTagFormatPreference === "none"
+    ) {
+        return node.tag
+    }
+
+    const useKebab = options.componentTagFormatPreference === "kebab"
+    return useKebab ? util.camel2Kebab(node.tag, false) : node.componentTag
 }
 
 function needsToBorrowNextOpeningTagStartMarker(node: TemplateNode | undefined | null) {
