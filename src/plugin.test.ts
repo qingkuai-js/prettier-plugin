@@ -237,6 +237,8 @@ test("the attribute line wrap with setting bracketSameLine option", async () => 
 })
 
 test("interpolation in attribute(dynamic attribute, directive, event)", async () => {
+    expect(await format("<p #for={ xxx }></p>")).toBe("<p #for={xxx}></p>")
+
     expect(await format("<p #for={ (item, index) of 3 }></p>")).toBe(
         "<p #for={item, index of 3}></p>"
     )
@@ -244,6 +246,8 @@ test("interpolation in attribute(dynamic attribute, directive, event)", async ()
     expect(await format("<div !class={arr   .slice(  a)}></div>")).toBe(
         "<div !class={arr.slice(a)}></div>"
     )
+
+    expect(await format("<span !value='a'></span>")).toBe("<span !value={a}></span>")
 
     expect(await format("<div #for={  item, index of arr. length>10?3:arr.length}></div>")).toBe(
         "<div #for={item, index of arr.length > 10 ? 3 : arr.length}></div>"

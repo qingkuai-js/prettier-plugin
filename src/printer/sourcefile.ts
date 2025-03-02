@@ -177,7 +177,7 @@ async function printAttribute(
         let value: Doc = attr.value.raw
         let quote = options.singleQuote ? "'" : '"'
 
-        if (attr.quote === "curly") {
+        if (/[!@#&]/.test(attr.key.raw[0])) {
             if (attr.key.raw === "#for") {
                 value = await printForDirective(textToDoc, value, options)
             } else {
@@ -361,6 +361,10 @@ async function printForDirective(
 ) {
     const textToDocOptions = getInterpolationFormatOptions()
     const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfSC(text, " of ")
+    if (ofKeywordIndex === -1) {
+        return printInterpolation(textToDoc, text, options)
+    }
+
     const contextDoc = await textToDoc(text.slice(0, ofKeywordIndex), {
         __isQingkuaiForDirective: true,
         ...textToDocOptions

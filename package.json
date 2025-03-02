@@ -1,8 +1,9 @@
 {
-    "name": "qingkuai-prettier-plugin",
+    "name": "prettier-plugin-qingkuai",
     "version": "1.0.0",
     "license": "MIT",
     "type": "module",
+    "main": "./dist/index.js",
     "scripts": {
         "dev": "rollup -c -w",
         "test": "npm run build-base && npx vitest --run",
@@ -12,7 +13,7 @@
     "keywords": [
         "formatting",
         "qingkuai",
-        "prettier"
+        "prettier plugin"
     ],
     "dependencies": {
         "prettier": "^3.3.3",
@@ -29,5 +30,5 @@
         "typescript": "^5.6.3",
         "vitest": "^3.0.5"
     },
-    "description": "prettier plugin for .qk file formatting"
+    "description": "prettier plugin for qingkuai(.qk) file formatting"
 }
