@@ -339,10 +339,16 @@ async function printInterpolation(
     text: string,
     options: ParserOptions
 ) {
-    const interpolationDoc = await textToDoc(text, getInterpolationFormatOptions())
-
     let formatedDoc: Doc
-    if (options.spaceAroundInterpolation) {
+    let interpolationDoc: Doc
+
+    if (!text) {
+        interpolationDoc = text
+    } else {
+        interpolationDoc = await textToDoc(text, getInterpolationFormatOptions())
+    }
+
+    if (options.spaceAroundInterpolation && interpolationDoc) {
         formatedDoc = ifBreak(
             [indent([line, interpolationDoc]), line],
             [" ", interpolationDoc, " "]
