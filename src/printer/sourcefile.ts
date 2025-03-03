@@ -31,7 +31,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
 
     return async (textToDoc, print) => {
         if (!node.parent) {
-            return printChildren(path, print)
+            return [printChildren(path, print), hardline]
         }
 
         if (
