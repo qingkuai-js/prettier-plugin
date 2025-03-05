@@ -171,7 +171,8 @@ async function printAttribute(
 
     for (const attr of node.attributes) {
         if (attr.quote === "none") {
-            return attr.key.raw
+            printedAttribute.push(attr.key.raw)
+            continue
         }
 
         let value: Doc = attr.value.raw
