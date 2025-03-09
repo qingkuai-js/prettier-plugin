@@ -69,12 +69,26 @@ export const options: Record<string, SupportOption> = {
             {
                 value: "kebab",
                 description: "prefer kebab tag format, likes: <my-component></my-component>"
-            },
-            {
-                value: "none",
-                description: "all tag format that you input will be preserved"
             }
         ],
-        description: "your prefered fomat of element tag in the qingkuai template"
+        description: "your prefered fomat of component tag in the qingkuai template"
+    },
+    componentAttributeFormatPreference: {
+        type: "choice",
+        default: "camel",
+        category: "format",
+        choices: [
+            {
+                value: "camel",
+                description:
+                    "prefer camel attribute format, likes: <MyComponent MyCustomAttribute></MyComponent>"
+            },
+            {
+                value: "kebab",
+                description:
+                    "prefer kebab attribute format, likes: <my-component my-custom-attribute></my-component>"
+            }
+        ],
+        description: "your prefered fomat of component attribute in the qingkuai template"
     }
 }

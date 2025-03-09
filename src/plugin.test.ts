@@ -8,13 +8,14 @@ import { it, expect, test } from "vitest"
 const outPath = resolve(import.meta.dirname, "../dist/index.js")
 
 async function format(source: string, options: Partial<ParserOptions> = {}) {
-    return await prettier.format(source, {
+    const ret = await prettier.format(source, {
         tabWidth: 4,
         printWidth: 100,
         parser: "qingkuai",
         plugins: [outPath],
         ...options
     })
+    return ret.slice(0, -1)
 }
 
 test("top level nodes", async () => {
@@ -305,7 +306,7 @@ it("shoule insert whitespace before self-closing tag closing tag end marker", as
     )
 })
 
-test("prefered element tag format", async () => {
+test("prefered component tag format", async () => {
     expect(await format("<my-component></my-component>")).toBe("<MyComponent></MyComponent>")
 
     expect(
@@ -320,4 +321,22 @@ test("prefered element tag format", async () => {
             componentTagFormatPreference: "kebab"
         })
     ).toBe("<Test></Test>")
+})
+
+test("prefered component attribute format", async () => {
+    expect(await format("<Test my-custom-attribute/>")).toBe("<Test myCustomAttribute />")
+
+    expect(await format("<div my-custom-attribute></div>")).toBe("<div my-custom-attribute></div>")
+
+    expect(
+        await format("<Test my-custom-attribute/>", {
+            componentAttributeFormatPreference: "camel"
+        })
+    ).toBe("<Test myCustomAttribute />")
+
+    expect(
+        await format("<Test myCustomAttribute/>", {
+            componentAttributeFormatPreference: "kebab"
+        })
+    ).toBe("<Test my-custom-attribute />")
 })

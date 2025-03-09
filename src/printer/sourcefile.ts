@@ -170,8 +170,17 @@ async function printAttribute(
     const printedAttribute: Doc[] = []
 
     for (const attr of node.attributes) {
+        let attrKey = attr.key.raw
+        if (node.componentTag) {
+            if (options.componentAttributeFormatPreference === "kebab") {
+                attrKey = util.camel2Kebab(attrKey)
+            } else {
+                attrKey = util.kebab2Camel(attrKey)
+            }
+        }
+
         if (attr.quote === "none") {
-            printedAttribute.push(attr.key.raw)
+            printedAttribute.push(attrKey)
             continue
         }
 
@@ -191,7 +200,7 @@ async function printAttribute(
             value = [quote, replaceWithLiteralLine(value), quote]
         }
 
-        printedAttribute.push(group([attr.key.raw, "=", value]))
+        printedAttribute.push(group([attrKey, "=", value]))
     }
 
     const forceNotToBreak =
