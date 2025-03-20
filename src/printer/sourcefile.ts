@@ -568,11 +568,7 @@ function getInterpolationFormatOptions() {
 }
 
 function getPreferedTag(node: TemplateNode, options: ParserOptions) {
-    if (
-        !node.componentTag ||
-        util.isEmbededLanguageTag(node.tag) ||
-        options.componentTagFormatPreference === "none"
-    ) {
+    if (!node.componentTag || options.componentTagFormatPreference === "none") {
         return node.tag
     }
 

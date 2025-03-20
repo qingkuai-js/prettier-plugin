@@ -17,7 +17,7 @@
     ],
     "dependencies": {
         "prettier": "^3.3.3",
-        "qingkuai": "file:/users/lianggaoqiang/desktop/QingKuai/qingkuai"
+        "qingkuai": "^1.0.1"
     },
     "devDependencies": {
         "@types/node": "^22.13.1",
