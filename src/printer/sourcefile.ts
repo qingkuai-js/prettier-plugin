@@ -376,7 +376,7 @@ async function printForDirective(
     options: ParserOptions
 ) {
     const textToDocOptions = getInterpolationFormatOptions()
-    const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfSC(text, " of ")
+    const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfStringComment(text, " of ")
     if (ofKeywordIndex === -1) {
         return printInterpolation(textToDoc, text, options)
     }

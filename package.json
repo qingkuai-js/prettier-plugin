@@ -1,6 +1,6 @@
 {
     "name": "prettier-plugin-qingkuai",
-    "version": "1.0.6",
+    "version": "1.0.8",
     "license": "MIT",
     "type": "module",
     "main": "./dist/index.js",
@@ -17,7 +17,7 @@
     ],
     "dependencies": {
         "prettier": "^3.3.3",
-        "qingkuai": "^1.0.1"
+        "qingkuai": "^1.0.6"
     },
     "devDependencies": {
         "@types/node": "^22.13.1",
