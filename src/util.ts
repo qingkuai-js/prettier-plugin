@@ -63,9 +63,11 @@ export function throwEmbedLanguageError(
         throw error
     }
 
+    const messageWithoutLoc = error.cause.message.replace(/\(\d+:\d+\)$/, "")
     const sourcePositions = options.sourcePositions as LinesAndColumns
     const realErrorPos = startSourceIndex + error.cause.pos
     const s = sourcePositions.locationForIndex(realErrorPos)!
+    const locMessage = `(${s.line + 1}:${s.column + 1})`
     const errorLoc = {
         start: {
             line: s.line + 1,
@@ -81,7 +83,9 @@ export function throwEmbedLanguageError(
     if (!isUndefined(error.cause.loc)) {
         error.cause.loc = errorLoc
     }
-    throw new SyntaxError(`${error.cause.message}\n${messageTip}`, { cause: error.cause })
+    throw new SyntaxError(`${messageWithoutLoc}${locMessage}\n${messageTip}`, {
+        cause: error.cause
+    })
 }
 
 // 判断节点是否只有一个只有空白字符的文本节点
