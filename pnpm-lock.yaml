@@ -14,9 +14,6 @@ importers:
       lines-and-columns:
         specifier: ^2.0.4
         version: 2.0.4
-      qingkuai:
-        specifier: ^1.0.14
-        version: 1.0.14
     devDependencies:
       '@types/babel__code-frame':
         specifier: ^7.0.6
@@ -30,6 +27,9 @@ importers:
       prettier:
         specifier: ^3.5.3
         version: 3.5.3
+      qingkuai:
+        specifier: ^1.0.14
+        version: 1.0.14
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1

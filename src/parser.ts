@@ -15,7 +15,6 @@ import { parseTemplate } from "qingkuai/compiler"
 import { LinesAndColumns } from "lines-and-columns"
 import { INLINE_BLOCK_TAGS, INLINE_TAGS } from "./constants"
 
-export let sourcePositions: LinesAndColumns
 export let [usingTypescript, hasNonEmbedNode] = [false, false]
 
 export function parse(text: string, options: ParserOptions) {

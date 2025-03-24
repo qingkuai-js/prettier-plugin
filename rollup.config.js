@@ -10,12 +10,12 @@ export default rollup.defineConfig(() => {
             external: [
                 "prettier",
                 "qingkuai/compiler",
+                "@babel/code-frame",
+                "lines-and-columns",
                 "prettier/plugins/babel",
-                "prettier/plugins/estree"
+                "prettier/plugins/estree",
             ],
-            input: {
-                index: "./src/index.ts"
-            },
+            input: { index: "./src/index.ts" },
             output: {
                 dir: "dist",
                 format: "es",

@@ -1,6 +1,6 @@
 {
     "name": "prettier-plugin-qingkuai",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "license": "MIT",
     "type": "module",
     "main": "./dist/index.js",
@@ -17,14 +17,14 @@
     ],
     "dependencies": {
         "@babel/code-frame": "^7.26.2",
-        "lines-and-columns": "^2.0.4",
-        "qingkuai": "^1.0.14"
+        "lines-and-columns": "^2.0.4"
     },
     "devDependencies": {
         "@types/babel__code-frame": "^7.0.6",
         "@types/node": "^22.13.1",
         "cross-env": "^7.0.3",
         "prettier": "^3.5.3",
+        "qingkuai": "^1.0.14",
         "rimraf": "^6.0.1",
         "rollup": "^4.24.0",
         "rollup-plugin-dts": "^6.1.1",
@@ -32,6 +32,10 @@
         "tsx": "^4.19.1",
         "typescript": "^5.6.3",
         "vitest": "^3.0.5"
+    },
+    "peerDependencies": {
+        "prettier": "^3.5.3",
+        "qingkuai": "^1.0.14"
     },
     "description": "prettier plugin for qingkuai(.qk) file formatting"
 }
