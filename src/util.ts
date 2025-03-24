@@ -1,6 +1,9 @@
 import type { TemplateNode } from "./types"
+import type { ParserOptions } from "prettier"
+import type { LinesAndColumns } from "lines-and-columns"
 
-import { doc, ParserOptions } from "prettier"
+import { doc } from "prettier"
+import { codeFrameColumns } from "@babel/code-frame"
 import { HARDLINE_TAGS, INLINE_TAGS, PRESERVE_TAGS } from "./constants"
 
 export function isNull(v: any): v is null {
@@ -48,6 +51,37 @@ export function isScriptOrStyleNode(node: TemplateNode | undefined) {
 // 获取节点的最后一个后代节点
 export function getLastDescendant(node: TemplateNode): TemplateNode {
     return node.lastChild ? getLastDescendant(node.lastChild) : node
+}
+
+// 抛出带有正确的code frame的错误（嵌入语言中的错误位置是基于嵌入语言内容的）
+export function throwEmbedLanguageError(
+    error: any,
+    options: ParserOptions,
+    startSourceIndex: number
+): never {
+    if (isUndefined(error.cause.pos)) {
+        throw error
+    }
+
+    const sourcePositions = options.sourcePositions as LinesAndColumns
+    const realErrorPos = startSourceIndex + error.cause.pos
+    const s = sourcePositions.locationForIndex(realErrorPos)!
+    const errorLoc = {
+        start: {
+            line: s.line + 1,
+            column: s.column + 1
+        }
+    }
+    const messageTip = codeFrameColumns(options.originalText, errorLoc, {
+        highlightCode: true
+    })
+    if (!isUndefined(error.cause.pos)) {
+        error.cause.pos = realErrorPos
+    }
+    if (!isUndefined(error.cause.loc)) {
+        error.cause.loc = errorLoc
+    }
+    throw new SyntaxError(`${error.cause.message}\n${messageTip}`, { cause: error.cause })
 }
 
 // 判断节点是否只有一个只有空白字符的文本节点

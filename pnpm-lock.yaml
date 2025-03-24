@@ -8,19 +8,28 @@ importers:
 
   .:
     dependencies:
-      prettier:
-        specifier: ^3.3.3
-        version: 3.5.3
+      '@babel/code-frame':
+        specifier: ^7.26.2
+        version: 7.26.2
+      lines-and-columns:
+        specifier: ^2.0.4
+        version: 2.0.4
       qingkuai:
-        specifier: ^1.0.6
-        version: 1.0.6
+        specifier: ^1.0.14
+        version: 1.0.14
     devDependencies:
+      '@types/babel__code-frame':
+        specifier: ^7.0.6
+        version: 7.0.6
       '@types/node':
         specifier: ^22.13.1
         version: 22.13.11
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
+      prettier:
+        specifier: ^3.5.3
+        version: 3.5.3
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -318,6 +327,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@types/babel__code-frame@7.0.6':
+    resolution: {integrity: sha512-Anitqkl3+KrzcW2k77lRlg/GfLZLWXBuNgbEcIOU6M92yw42vsd3xV/Z/yAHEj8m+KUjL6bWOVOFqX8PFPJ4LA==}
+
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
 
@@ -475,6 +487,10 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
+  lines-and-columns@2.0.4:
+    resolution: {integrity: sha512-wM1+Z03eypVAVUCE7QdSqpVIvelbOakn1M0bPDoA4SGWPx3sNDVUiMo3L6To6WWGClB7VyXnhQ4Sn7gxiJbE6A==}
+    engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
   loupe@3.1.3:
     resolution: {integrity: sha512-kkIp7XSkP78ZxJEsSxW3712C6teJVoeHHwgo9zJ380de7IYyJ2ISlxojcH2pC5OFLewESmnRi/+XCDIEEVyoug==}
 
@@ -535,8 +551,8 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  qingkuai@1.0.6:
-    resolution: {integrity: sha512-3dbE3XUaZoDrlsZGX9XQmiftYBWwLyPU8LJxFoUNrMDNuGqVnkTIw9t9APwCBJxmM1VYQJQjeqRsMie1YIw7/w==}
+  qingkuai@1.0.14:
+    resolution: {integrity: sha512-Oh88U9KwjUxxfZm6rUlLqmLNuSyHi6d2e5qIYU8suUTCYenvY04DM1PY+e/3yh8DoXiDv9feQjVocS5Gb7u3Dw==}
     engines: {node: '>=14'}
 
   resolve-pkg-maps@1.0.0:
@@ -740,7 +756,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.25.9
       js-tokens: 4.0.0
       picocolors: 1.1.1
-    optional: true
 
   '@babel/helper-string-parser@7.25.9': {}
 
@@ -897,6 +912,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.36.0':
     optional: true
+
+  '@types/babel__code-frame@7.0.6': {}
 
   '@types/estree@1.0.6': {}
 
@@ -1067,8 +1084,9 @@ snapshots:
     dependencies:
       '@isaacs/cliui': 8.0.2
 
-  js-tokens@4.0.0:
-    optional: true
+  js-tokens@4.0.0: {}
+
+  lines-and-columns@2.0.4: {}
 
   loupe@3.1.3: {}
 
@@ -1113,7 +1131,7 @@ snapshots:
 
   prettier@3.5.3: {}
 
-  qingkuai@1.0.6:
+  qingkuai@1.0.14:
     dependencies:
       '@babel/parser': 7.26.10
       '@jridgewell/sourcemap-codec': 1.5.0

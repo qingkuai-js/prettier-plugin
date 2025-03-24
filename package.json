@@ -16,12 +16,15 @@
         "prettier plugin"
     ],
     "dependencies": {
-        "prettier": "^3.3.3",
-        "qingkuai": "^1.0.6"
+        "@babel/code-frame": "^7.26.2",
+        "lines-and-columns": "^2.0.4",
+        "qingkuai": "^1.0.14"
     },
     "devDependencies": {
+        "@types/babel__code-frame": "^7.0.6",
         "@types/node": "^22.13.1",
         "cross-env": "^7.0.3",
+        "prettier": "^3.5.3",
         "rimraf": "^6.0.1",
         "rollup": "^4.24.0",
         "rollup-plugin-dts": "^6.1.1",

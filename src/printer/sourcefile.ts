@@ -13,17 +13,22 @@ import {
     hasTrailingLineBreak,
     isPrettierIgnoreNode,
     replaceWithLiteralLine,
+    throwEmbedLanguageError,
     preferHardlineAsLeadingSpace
 } from "../util"
 import { doc } from "prettier"
-import { hasNonEmbedNode, usingTypescript } from "../parser"
 import { templateEmbeddedLangTag } from "../regular"
+import { hasNonEmbedNode, usingTypescript } from "../parser"
 import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "../constants"
 import { util as qingkuaiCompilerUtil, util } from "qingkuai/compiler"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
 
 export function embed(path: AstPath, _options: Options): EmbedReturnValue {
+    if (!process.env.PRETTIER_DEBUG) {
+        process.env.PRETTIER_DEBUG = "1"
+    }
+
     const node: TemplateNode = path.getNode()
 
     // the options paramater satisfies ParserOptions type
@@ -62,16 +67,20 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
                     parser = "css"
             }
 
-            const noContent = !node.content.trim().length
-            const formatedDoc = await textToDoc(node.content, { parser })
-            return [
-                printOpeningTagPrefix(node),
-                group(await printOpeningTag(node, options, textToDoc)),
-                indent([noContent ? "" : hardline, formatedDoc]),
-                noContent ? "" : hardline,
-                printClosingTag(node, options),
-                printClosingTagSuffix(node)
-            ]
+            try {
+                const noContent = !node.content.trim().length
+                const formatedDoc = await textToDoc(node.content, { parser })
+                return [
+                    printOpeningTagPrefix(node),
+                    group(await printOpeningTag(node, options, textToDoc)),
+                    indent([noContent ? "" : hardline, formatedDoc]),
+                    noContent ? "" : hardline,
+                    printClosingTag(node, options),
+                    printClosingTagSuffix(node)
+                ]
+            } catch (error: any) {
+                throwEmbedLanguageError(error, options, node.startTagEndPos.index)
+            }
         }
 
         if (isEmptyString(node.tag)) {
@@ -188,10 +197,11 @@ async function printAttribute(
         let quote = options.singleQuote ? "'" : '"'
 
         if (/[!@#&]/.test(attr.key.raw[0])) {
+            const startSourceIndex = attr.value.loc.start.index
             if (attr.key.raw === "#for") {
-                value = await printForDirective(textToDoc, value, options)
+                value = await printForDirective(textToDoc, value, options, startSourceIndex)
             } else {
-                value = await printInterpolation(textToDoc, value, options)
+                value = await printInterpolation(textToDoc, value, options, startSourceIndex)
             }
         } else {
             if (attr.value.raw.includes(quote)) {
@@ -320,6 +330,7 @@ async function printContentOfTextNode(
     textToDoc: EmbedTextToDocFunc,
     options: ParserOptions
 ) {
+    let preContentLen = /^\s*/.exec(node.content)![0].length
     const docs: Doc[] = [printOpeningTagPrefix(node)]
 
     const mergeWhitespace = (str: string) => {
@@ -332,12 +343,20 @@ async function printContentOfTextNode(
             docs.push(mergeWhitespace(content))
             break
         } else {
+            preContentLen += startBracketIndex + 1
             docs.push(mergeWhitespace(content.slice(0, startBracketIndex)))
         }
 
         const endBracketIndex = qingkuaiCompilerUtil.findEndBracket(content, startBracketIndex + 1)
         const interpolationText = content.slice(startBracketIndex + 1, endBracketIndex)
-        docs.push(await printInterpolation(textToDoc, interpolationText, options))
+        docs.push(
+            await printInterpolation(
+                textToDoc,
+                interpolationText,
+                options,
+                node.range[0] + preContentLen
+            )
+        )
         content = content.slice(endBracketIndex + 1)
     }
 
@@ -347,24 +366,26 @@ async function printContentOfTextNode(
 async function printInterpolation(
     textToDoc: EmbedTextToDocFunc,
     text: string,
-    options: ParserOptions
+    options: ParserOptions,
+    startSourceIndex: number
 ) {
+    let doc: Doc
     let formatedDoc: Doc
-    let interpolationDoc: Doc
 
     if (!text) {
-        interpolationDoc = text
+        doc = text
     } else {
-        interpolationDoc = await textToDoc(text, getInterpolationFormatOptions())
+        try {
+            doc = await textToDoc(text, getInterpolationFormatOptions())
+        } catch (error: any) {
+            throwEmbedLanguageError(error, options, startSourceIndex)
+        }
     }
 
-    if (options.spaceAroundInterpolation && interpolationDoc) {
-        formatedDoc = ifBreak(
-            [indent([line, interpolationDoc]), line],
-            [" ", interpolationDoc, " "]
-        )
+    if (!options.spaceAroundInterpolation || !doc) {
+        formatedDoc = ifBreak([indent([softline, doc]), softline], doc)
     } else {
-        formatedDoc = ifBreak([indent([softline, interpolationDoc]), softline], interpolationDoc)
+        formatedDoc = ifBreak([indent([line, doc]), line], [" ", doc, " "])
     }
 
     return group(["{", formatedDoc, "}"])
@@ -373,12 +394,13 @@ async function printInterpolation(
 async function printForDirective(
     textToDoc: EmbedTextToDocFunc,
     text: string,
-    options: ParserOptions
+    options: ParserOptions,
+    startSourceIndex: number
 ) {
     const textToDocOptions = getInterpolationFormatOptions()
     const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfStringComment(text, " of ")
     if (ofKeywordIndex === -1) {
-        return printInterpolation(textToDoc, text, options)
+        return printInterpolation(textToDoc, text, options, startSourceIndex)
     }
 
     const contextDoc = await textToDoc(text.slice(0, ofKeywordIndex), {

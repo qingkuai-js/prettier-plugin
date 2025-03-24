@@ -12,8 +12,10 @@ import {
 } from "./util"
 import { displayCommentRE } from "./regular"
 import { parseTemplate } from "qingkuai/compiler"
+import { LinesAndColumns } from "lines-and-columns"
 import { INLINE_BLOCK_TAGS, INLINE_TAGS } from "./constants"
 
+export let sourcePositions: LinesAndColumns
 export let [usingTypescript, hasNonEmbedNode] = [false, false]
 
 export function parse(text: string, options: ParserOptions) {
@@ -23,6 +25,7 @@ export function parse(text: string, options: ParserOptions) {
         index: -1
     }
     const chunks: FixedArray<TemplateNode[], 3> = [[], [], []]
+    options.sourcePositions = new LinesAndColumns(text)
 
     const ret: TemplateNode = {
         parent: null,
@@ -51,20 +54,31 @@ export function parse(text: string, options: ParserOptions) {
     }
 
     // 排序顶级节点：嵌入脚本块 > 普通节点 > 嵌入样式块
-    parseTemplate(text).forEach((node: any) => {
-        if (!node.isEmbedded) {
-            chunks[1].push(node)
-            return
-        }
+    try {
+        parseTemplate(text).forEach((node: any) => {
+            if (!node.isEmbedded) {
+                chunks[1].push(node)
+                return
+            }
 
-        if (node.tag !== "lang-js" && node.tag !== "lang-ts") {
-            chunks[2].push(node)
-            return
-        }
+            if (node.tag !== "lang-js" && node.tag !== "lang-ts") {
+                chunks[2].push(node)
+                return
+            }
 
-        chunks[0].push(node)
-        usingTypescript = node.tag === "lang-ts"
-    })
+            chunks[0].push(node)
+            usingTypescript = node.tag === "lang-ts"
+        })
+    } catch (error: any) {
+        // prettier生成错误code frame时需要的列信息为1-based
+        if (error.loc) {
+            error.loc.end.index++
+            error.loc.end.column++
+            error.loc.start.index++
+            error.loc.start.column++
+        }
+        throw error
+    }
 
     const nodes = chunks.flat()
     ret.children = nodes
