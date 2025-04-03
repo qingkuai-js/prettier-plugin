@@ -38,6 +38,7 @@ export function parse(text: string, options: ParserOptions) {
         children: [],
         attributes: [],
         componentTag: "",
+        pure: false,
         isEmbedded: false,
         lastChild: undefined,
         preWhiteSpace: false,

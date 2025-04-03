@@ -28,8 +28,8 @@ importers:
         specifier: ^3.5.3
         version: 3.5.3
       qingkuai:
-        specifier: ^1.0.14
-        version: 1.0.14
+        specifier: ^1.0.25
+        version: 1.0.25
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -66,13 +66,13 @@ packages:
     resolution: {integrity: sha512-Ed61U6XJc3CVRfkERJWDz4dJwKe7iLmmJsbOGu9wSloNSFttHV0I8g6UAgb7qnK5ly5bGLPd4oXZlxCdANBOWQ==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/parser@7.26.10':
-    resolution: {integrity: sha512-6aQR2zGE/QFi8JpDLjUZEPYOs7+mhKXm86VaKFiLP35JQwQb6bwUE+XbvkH0EptsYhbNBSUGaUBLKqxH1xSgsA==}
+  '@babel/parser@7.27.0':
+    resolution: {integrity: sha512-iaepho73/2Pz7w2eMS0Q5f83+0RKI7i4xmiYeBmDzfRVbQtTOG7Ts0S4HzJVsTMGI9keU8rNfuZr8DKfSt7Yyg==}
     engines: {node: '>=6.0.0'}
     hasBin: true
 
-  '@babel/types@7.26.10':
-    resolution: {integrity: sha512-emqcG3vHrpxUKTrxcblR36dcrcoRDvKmnL/dCL6ZsHaShW80qxCAcNhzQZrpeM765VzEos+xOi4s+r4IXzTwdQ==}
+  '@babel/types@7.27.0':
+    resolution: {integrity: sha512-H45s8fVLYjbhFH62dIJ3WtmJ6RSPt/3DRO0ZcT2SUiYiQyz3BLVb9ADEnLl91m74aQPS3AzzeajZHYOalWe3bg==}
     engines: {node: '>=6.9.0'}
 
   '@esbuild/aix-ppc64@0.25.1':
@@ -551,8 +551,8 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  qingkuai@1.0.14:
-    resolution: {integrity: sha512-Oh88U9KwjUxxfZm6rUlLqmLNuSyHi6d2e5qIYU8suUTCYenvY04DM1PY+e/3yh8DoXiDv9feQjVocS5Gb7u3Dw==}
+  qingkuai@1.0.25:
+    resolution: {integrity: sha512-E+Yuu0d0+967d6SdF+dkUk7B6geysvPQC3gX10E8vCsk9nVHVRgx9chN96HQpBmZn3o6TxKb2da6UjIwvOuhKA==}
     engines: {node: '>=14'}
 
   resolve-pkg-maps@1.0.0:
@@ -761,11 +761,11 @@ snapshots:
 
   '@babel/helper-validator-identifier@7.25.9': {}
 
-  '@babel/parser@7.26.10':
+  '@babel/parser@7.27.0':
     dependencies:
-      '@babel/types': 7.26.10
+      '@babel/types': 7.27.0
 
-  '@babel/types@7.26.10':
+  '@babel/types@7.27.0':
     dependencies:
       '@babel/helper-string-parser': 7.25.9
       '@babel/helper-validator-identifier': 7.25.9
@@ -1131,9 +1131,9 @@ snapshots:
 
   prettier@3.5.3: {}
 
-  qingkuai@1.0.14:
+  qingkuai@1.0.25:
     dependencies:
-      '@babel/parser': 7.26.10
+      '@babel/parser': 7.27.0
       '@jridgewell/sourcemap-codec': 1.5.0
 
   resolve-pkg-maps@1.0.0: {}
