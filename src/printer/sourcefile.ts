@@ -69,7 +69,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
 
             try {
                 const noContent = !node.content.trim().length
-                const formatedDoc = await textToDoc(node.content, { parser })
+                const formatedDoc = await textToDoc(node.content, { ...options, parser })
                 return [
                     printOpeningTagPrefix(node),
                     group(await printOpeningTag(node, options, textToDoc)),
@@ -376,7 +376,7 @@ async function printInterpolation(
         doc = text
     } else {
         try {
-            doc = await textToDoc(text, getInterpolationFormatOptions())
+            doc = await textToDoc(text, getInterpolationFormatOptions(options))
         } catch (error: any) {
             throwEmbedLanguageError(error, text, options, startSourceIndex)
         }
@@ -397,15 +397,15 @@ async function printForDirective(
     options: ParserOptions,
     startSourceIndex: number
 ) {
-    const textToDocOptions = getInterpolationFormatOptions()
+    const textToDocOptions = getInterpolationFormatOptions(options)
     const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfStringComment(text, " of ")
     if (ofKeywordIndex === -1) {
         return printInterpolation(textToDoc, text, options, startSourceIndex)
     }
 
     const contextDoc = await textToDoc(text.slice(0, ofKeywordIndex), {
-        __isQingkuaiForDirective: true,
-        ...textToDocOptions
+        ...textToDocOptions,
+        __isQingkuaiForDirective: true
     })
     const interpolationDoc = [
         contextDoc,
@@ -581,10 +581,9 @@ function printOpeningTagEnd(node: TemplateNode) {
     return needsToBorrowParentOpeningTagEndMarker(node.children[0]) ? "" : ">"
 }
 
-function getInterpolationFormatOptions() {
+function getInterpolationFormatOptions(options: Options) {
     return {
-        __embeddedInHtml: true,
-        __isInHtmlAttribute: true,
+        ...options,
         parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
     }
 }
