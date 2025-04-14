@@ -13,7 +13,7 @@ export default rollup.defineConfig(() => {
                 "@babel/code-frame",
                 "lines-and-columns",
                 "prettier/plugins/babel",
-                "prettier/plugins/estree",
+                "prettier/plugins/estree"
             ],
             input: { index: "./src/index.ts" },
             output: {
@@ -22,11 +22,7 @@ export default rollup.defineConfig(() => {
                 sourcemap: true,
                 chunkFileNames: "chunks/[name].js"
             },
-            plugins: [
-                esbuild({
-                    target: "esNext"
-                })
-            ]
+            plugins: [esbuild()]
         }
     ]
 

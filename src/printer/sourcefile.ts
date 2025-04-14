@@ -25,8 +25,11 @@ import { util as qingkuaiCompilerUtil, util } from "qingkuai/compiler"
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
 
 export function embed(path: AstPath, _options: Options): EmbedReturnValue {
-    if (!process.env.PRETTIER_DEBUG) {
+    if (typeof process !== "undefined" && !process.env.PRETTIER_DEBUG) {
         process.env.PRETTIER_DEBUG = "1"
+    }
+    if (typeof self !== "undefined" && !(self as any).PRETTIER_DEBUG) {
+        ;(self as any).PRETTIER_DEBUG = "1"
     }
 
     const node: TemplateNode = path.getNode()

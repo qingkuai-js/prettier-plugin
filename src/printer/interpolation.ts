@@ -1,5 +1,5 @@
 import type { PrintFunc } from "../types"
-import type { AstPath, ParserOptions, Doc } from "prettier"
+import type { AstPath, ParserOptions } from "prettier"
 
 import { doc } from "prettier"
 import estree from "prettier/plugins/estree"
