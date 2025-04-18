@@ -28,8 +28,8 @@ importers:
         specifier: ^3.5.3
         version: 3.5.3
       qingkuai:
-        specifier: ^1.0.29
-        version: 1.0.29
+        specifier: ^1.0.41
+        version: 1.0.41
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -567,9 +567,8 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
-  qingkuai@1.0.29:
-    resolution: {integrity: sha512-QiJQqJD+TEhc9wppAxeBYsoIxtHBpe3RRypCqk7zI2Yl4cJSObGww+to/SkmBQY55WWrs5aREhfDVc8YAt42lQ==}
-    engines: {node: '>=14'}
+  qingkuai@1.0.41:
+    resolution: {integrity: sha512-1BrgV/0HzVOuNEuimM+pz3z00xVg4wkuAn8qERBMue5OhEBK/THf9gQk7livzBmddbbU0g8vc4dUn6/RL3hJ5Q==}
 
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
@@ -1150,7 +1149,7 @@ snapshots:
 
   prettier@3.5.3: {}
 
-  qingkuai@1.0.29:
+  qingkuai@1.0.41:
     dependencies:
       '@babel/parser': 7.27.0
       '@jridgewell/sourcemap-codec': 1.5.0
