@@ -56,18 +56,12 @@ export function parse(text: string, options: ParserOptions) {
     // 排序顶级节点：嵌入脚本块 > 普通节点 > 嵌入样式块
     try {
         parseTemplate(text).forEach((node: any) => {
-            if (!node.isEmbedded) {
-                chunks[1].push(node)
-                return
+            if (/^(?:!|lang-js|lang-ts)/.test(node.tag)) {
+                chunks[0].push(node)
+                usingTypescript = node.tag === "lang-ts"
+            } else {
+                chunks[node.isEmbedded ? 2 : 1].push(node)
             }
-
-            if (node.tag !== "lang-js" && node.tag !== "lang-ts") {
-                chunks[2].push(node)
-                return
-            }
-
-            chunks[0].push(node)
-            usingTypescript = node.tag === "lang-ts"
         })
     } catch (error: any) {
         // prettier生成错误code frame时需要的列信息为1-based
