@@ -113,6 +113,7 @@ test("the order and line break of embed langauge block node", async () => {
         `)
     ).toBe(
         formatSourceCode(`
+            <!-- a comment -->
             <lang-js>
                 function test() {
                     console.log("AAA");
@@ -120,7 +121,6 @@ test("the order and line break of embed langauge block node", async () => {
                 }
             </lang-js>
 
-            <!-- a comment -->
             <div>
                 <span> <a> ... </a> </span>
             </div>
@@ -211,6 +211,38 @@ test("the attribute line wrap", async () => {
     )
 })
 
+test("the format result of preserve tags", async () => {
+    expect(
+        await format(
+            formatSourceCode(`
+                <pre>
+                    <div></div></pre>
+            `)
+        )
+    ).toBe(
+        formatSourceCode(`
+        <pre>
+            <div></div></pre>    
+    `)
+    )
+
+    expect(
+        await format(
+            formatSourceCode(`
+                <textarea
+                    value='xxx'
+                    >
+                    <div></div></textarea>
+            `)
+        )
+    ).toBe(
+        formatSourceCode(`
+        <textarea value="xxx">
+            <div></div></textarea>    
+    `)
+    )
+})
+
 test("the attribute line wrap with setting bracketSameLine option", async () => {
     expect(
         await format(`<div id="..." class="...">...</div>`, {
@@ -278,7 +310,7 @@ test("interpolation in attribute(dynamic attribute, directive, event)", async ()
             <div
                 @click={
                     () => {
-                        console.log('AAA');
+                        console.log("AAA");
                         return 10;
                     }
                 }

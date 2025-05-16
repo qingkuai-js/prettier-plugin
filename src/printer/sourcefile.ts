@@ -111,24 +111,20 @@ async function printElement(
 ) {
     const node: TemplateNode = path.getNode()
 
-    if (isPrettierIgnoreNode(node)) {
-        let [start, end] = node.range
+    const printTag = async (doc: Doc) => {
+        const openingTag = await printOpeningTag(node, options, textToDoc)
+        return group([group(openingTag), doc, printClosingTag(node, options)])
+    }
 
+    if (isPrettierIgnoreNode(node)) {
+        let [start, end] = [node.startTagEndPos.index, node.endTagStartPos.index]
         if (node.prev && needsToBorrowNextOpeningTagStartMarker(node.prev)) {
             start += 1
         }
         if (node.next && needsToBorrowPrevClosingTagEndMarker(node.next)) {
             end -= printClosingTagEndMarker(node).length
         }
-
-        const originalText = options.originalText.slice(start, end)
-        const preservedText = replaceWithLiteralLine(originalText)
-        return [printOpeningTagPrefix(node), preservedText, printClosingTagSuffix(node)]
-    }
-
-    const printTag = async (doc: Doc) => {
-        const openingTag = await printOpeningTag(node, options, textToDoc)
-        return group([group(openingTag), doc, printClosingTag(node, options)])
+        return printTag(replaceWithLiteralLine(options.originalText.slice(start, end)))
     }
 
     const printLineAfterChildren = () => {
