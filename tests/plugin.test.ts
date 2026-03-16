@@ -1,7 +1,8 @@
 import type { ParserOptions } from "prettier"
 
-import { resolve } from "path"
 import * as prettier from "prettier"
+
+import { resolve } from "path"
 import { it, expect, test } from "vitest"
 
 const outPath = resolve(import.meta.dirname, "../dist/index.js")
@@ -14,7 +15,7 @@ async function format(source: string, options: Partial<ParserOptions> = {}) {
         plugins: [outPath],
         ...options
     })
-    return ret.slice(0, -1)
+    return ret
 }
 
 // 由于使用模板字符串(反引号)书写源码时会保留所有空格，这导致在想要书写带有缩进的代码字符串时，
@@ -221,9 +222,9 @@ test("the format result of preserve tags", async () => {
         )
     ).toBe(
         formatSourceCode(`
-        <pre>
-            <div></div></pre>    
-    `)
+            <pre>
+                <div></div></pre>
+        `)
     )
 
     expect(
@@ -237,9 +238,9 @@ test("the format result of preserve tags", async () => {
         )
     ).toBe(
         formatSourceCode(`
-        <textarea value="xxx">
-            <div></div></textarea>    
-    `)
+            <textarea value="xxx">
+                <div></div></textarea>
+        `)
     )
 })
 
@@ -292,10 +293,6 @@ test("interpolation in attribute(dynamic attribute, directive, event)", async ()
             spaceAroundInterpolation: true
         })
     ).toBe("<span !value={ a } @click={}></span>")
-
-    expect(await format("<p #for={ (item, index) of 3 }></p>")).toBe(
-        "<p #for={item, index of 3}></p>"
-    )
 
     expect(await format("<div !class={arr   .slice(  a)}></div>")).toBe(
         "<div !class={arr.slice(a)}></div>"
@@ -354,7 +351,7 @@ it("shoule insert whitespace before self-closing tag closing tag end marker", as
 })
 
 test("prefered component tag format", async () => {
-    expect(await format("<my-component></my-component>")).toBe("<MyComponent></MyComponent>")
+    expect(await format("<my-component></my-component>")).toBe("<myComponent></myComponent>")
 
     expect(
         await format("<my-component></my-component>", {

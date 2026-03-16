@@ -4,13 +4,14 @@ import type { FixedArray, TemplateNode } from "./types"
 import {
     isNull,
     lastElem,
+    getRawContent,
     isEmptyString,
     isNodeInTopScope,
     isPrettierIgnoreNode,
     isScriptOrStyleNode,
     isNodeRegardedInline
 } from "./util"
-import { displayCommentRE } from "./regular"
+import { cssDisplayRE } from "./regular"
 import { parseTemplate } from "qingkuai/compiler"
 import { LinesAndColumns } from "lines-and-columns"
 import { INLINE_BLOCK_TAGS, INLINE_TAGS } from "./constants"
@@ -33,17 +34,17 @@ export function parse(text: string, options: ParserOptions) {
         oriPrev: void 0,
         oriNext: void 0,
         tag: "",
+        rawTag: "",
         display: "",
-        content: "",
+        content: [],
         children: [],
         attributes: [],
+        rawContent: "",
         componentTag: "",
-        pure: false,
         isEmbedded: false,
         lastChild: undefined,
         preWhiteSpace: false,
         isSelfClosing: false,
-        range: [0, text.length],
         hasLeadingSpace: false,
         hasTrailingSpace: false,
         leadingSpaceSensitive: false,
@@ -55,7 +56,10 @@ export function parse(text: string, options: ParserOptions) {
 
     // 排序顶级节点：嵌入脚本块 > 普通节点 > 嵌入样式块
     try {
-        parseTemplate(text).forEach((node: any) => {
+        parseTemplate(text, {
+            preseveCommentNodes: true,
+            preserveBlankTextNodes: false
+        }).forEach((node: any) => {
             if (/^(?:!|lang-js|lang-ts)/.test(node.tag)) {
                 chunks[0].push(node)
                 usingTypescript = node.tag === "lang-ts"
@@ -116,6 +120,7 @@ export function locStart(node: TemplateNode) {
 }
 
 export function preprocess(node: TemplateNode, options: ParserOptions) {
+    node.rawContent = getRawContent(node)
     node.lastChild = lastElem(node.children)
     node.hasLeadingSpace = node.hasTrailingSpace = false
 
@@ -123,9 +128,15 @@ export function preprocess(node: TemplateNode, options: ParserOptions) {
     if (INLINE_TAGS.has(node.tag)) {
         node.display = "inline"
     }
-    if (node.prev && node.prev.tag === "!") {
-        node.display = displayCommentRE.exec(node.prev.content)?.[1] || ""
+    if (node.prev && node.prev.tag === "!" && node.prev.content.length) {
+        const m = cssDisplayRE.exec(node.prev.content[0].value)
+        m && (node.display = m[1])
     }
+
+    const styleAttr = node.attributes.find(item => item.name.raw === "style")
+    const styleCssDisplayMatched = styleAttr && cssDisplayRE.exec(styleAttr.value.raw)
+    styleCssDisplayMatched && (node.display = styleCssDisplayMatched[1])
+
     if (!node.display) {
         switch (options.htmlWhitespaceSensitivity) {
             case "strict":
@@ -142,8 +153,8 @@ export function preprocess(node: TemplateNode, options: ParserOptions) {
     }
 
     if (isEmptyString(node.tag)) {
-        const withLeadingSpace = /^\s/.test(node.content)
-        const withTrailingSpace = /\s$/.test(node.content)
+        const withLeadingSpace = /^\s/.test(node.rawContent)
+        const withTrailingSpace = /\s$/.test(node.rawContent)
         if (withLeadingSpace) {
             node.hasLeadingSpace = true
             node.prev && (node.prev.hasTrailingSpace = true)
@@ -154,16 +165,16 @@ export function preprocess(node: TemplateNode, options: ParserOptions) {
         }
     } else {
         if (node.prev) {
-            node.hasLeadingSpace = node.range[0] !== node.prev.range[1]
+            node.hasLeadingSpace = node.loc.start.index !== node.prev.loc.end.index
         }
         if (node.next) {
-            node.hasTrailingSpace = node.range[1] !== node.next.range[0]
+            node.hasTrailingSpace = node.loc.end.index !== node.next.loc.start.index
         }
         if (node === node.parent?.children[0]) {
-            node.hasLeadingSpace = node.range[0] !== node.parent.startTagEndPos.index
+            node.hasLeadingSpace = node.loc.start.index !== node.parent.startTagEndPos.index
         }
         if (node === lastElem(node.parent?.children || [])) {
-            node.hasTrailingSpace = node.range[1] !== node.parent?.endTagStartPos.index
+            node.hasTrailingSpace = node.loc.end.index !== node.parent?.endTagStartPos.index
         }
     }
 }
@@ -189,15 +200,23 @@ function attachSpaceSensitive(node: TemplateNode) {
 
     function isSpaceSensitive(node: TemplateNode, type: "head" | "tail") {
         const sibling = node[type === "head" ? "prev" : "next"]
-
-        if (node.parent && node.parent.display === "none") {
-            return false
+        if (node.parent) {
+            switch (node.parent.tag) {
+                case "style":
+                case "script":
+                case "textarea": {
+                    return false
+                }
+                default: {
+                    if (node.parent.isEmbedded || node.parent.display === "none") {
+                        return false
+                    }
+                }
+            }
         }
-
         if (node.parent && isPrettierIgnoreNode(node.parent)) {
             return true
         }
-
         if (sibling && !isNodeRegardedInline(sibling)) {
             return false
         }

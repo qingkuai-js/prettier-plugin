@@ -1,12 +1,14 @@
 import type { AstPath, Doc, Options, Printer } from "prettier"
 import type { TemplateNode as QingKuaiTemplateNode } from "qingkuai/compiler"
 
+export type Pair<T> = FixedArray<T, 2>
 export type PrintFunc = (path: AstPath) => Doc
 
 export type TemplateNode = {
     children: TemplateNode[]
     parent: TemplateNode | null
     display: string
+    rawContent: string
     hasLeadingSpace: boolean
     hasTrailingSpace: boolean
     leadingSpaceSensitive: boolean

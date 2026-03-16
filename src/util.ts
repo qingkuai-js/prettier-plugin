@@ -1,5 +1,6 @@
-import type { TemplateNode } from "./types"
 import type { ParserOptions } from "prettier"
+import type { Pair, TemplateNode } from "./types"
+import type { ASTLocation } from "qingkuai/compiler"
 
 import { doc } from "prettier"
 import { LinesAndColumns } from "lines-and-columns"
@@ -30,6 +31,18 @@ export function lastElem<T>(arr: T[]): T | undefined {
     return arr[arr.length - 1]
 }
 
+export function getRawContent(node: TemplateNode) {
+    if (!node.content.length) {
+        return ""
+    }
+    return node.content.reduce((ret, cur) => {
+        if (!cur.isInterpolated) {
+            return ret + cur.value
+        }
+        return ret + `{${cur.value}}`
+    }, "")
+}
+
 // 将字符串中的换行符替换为doc.builders.literalline
 export function replaceWithLiteralLine(str: string) {
     const { join, literalline } = doc.builders
@@ -38,6 +51,10 @@ export function replaceWithLiteralLine(str: string) {
 
 export function isNodeInTopScope(node: TemplateNode) {
     return isNull(node.parent?.parent)
+}
+
+export function getRangeByLoc(loc: ASTLocation): Pair<number> {
+    return [loc.start.index, loc.end.index]
 }
 
 export function isTextOrCommentNode(node: TemplateNode | undefined) {
@@ -61,14 +78,14 @@ export function isDanlingSpaceNode(node: TemplateNode) {
     if (!node.children.length) {
         return node.startTagEndPos.index !== node.endTagStartPos.index
     }
-    return isEmptyString(node.children[0].tag) && !node.children[0].content.trim()
+    return isEmptyString(node.children[0].tag) && !getRawContent(node.children[0]).trim()
 }
 
 export function isPrettierIgnoreNode(node: TemplateNode) {
     if (PRESERVE_TAGS.has(node.tag) || node.preWhiteSpace) {
         return true
     }
-    return node.prev?.tag === "!" && node.prev.content.trim() === "prettier-ignore"
+    return node.prev?.tag === "!" && getRawContent(node.prev) === "prettier-ignore"
 }
 
 export function preferHardlineAsLeadingSpace(node: TemplateNode) {
@@ -127,19 +144,19 @@ export function throwEmbedLanguageError(
     }
 
     let locMessage = ""
-    const lac = new LinesAndColumns(content)
-    const errorIndex = lac.indexForLocation({
-        line: error.loc.start.line - 1,
-        column: error.loc.start.column - 1
+    const errorLoc = error.loc.start ?? error.loc
+    const lineAndCharacters = new LinesAndColumns(content)
+    const errorMessage = error.cause?.message ?? error.message
+
+    const errorIndex = lineAndCharacters.indexForLocation({
+        line: errorLoc.line - 1,
+        column: errorLoc.column - 1
     })!
     const realErrIndex = startSourceIndex + errorIndex
-    const slac = options.sourcePositions as LinesAndColumns
-    const errorLocation = slac.locationForIndex(realErrIndex)!
-    if (error.cause?.message) {
-        const messageWithoutLoc = error.cause?.message.replace(
-            /^<css input>:\d+:\d+: | \(\d+:\d+\)$/,
-            ""
-        )
+    const sourceLineAndCharacters = options.sourcePositions as LinesAndColumns
+    const errorLocation = sourceLineAndCharacters.locationForIndex(realErrIndex)!
+    if (errorMessage) {
+        const messageWithoutLoc = errorMessage.replace(/^<css input>:\d+:\d+: | \(\d+:\d+\)$/, "")
         locMessage = messageWithoutLoc + ` (${errorLocation.line + 1}:${errorLocation.column + 1})`
     }
 
@@ -149,10 +166,10 @@ export function throwEmbedLanguageError(
             column: errorLocation.column + 1
         }
     }
-    if (!isUndefined(error.cause.pos)) {
+    if (!isUndefined(error.cause?.pos)) {
         error.cause.pos = realErrIndex
     }
-    if (!isUndefined(error.cause.loc)) {
+    if (!isUndefined(error.cause?.loc)) {
         error.cause.loc = realErrorLocation
     }
 

@@ -4,6 +4,7 @@ import type { EmbedReturnValue, EmbedTextToDocFunc, PrintFunc, TemplateNode } fr
 import {
     lastElem,
     isEmptyString,
+    getRangeByLoc,
     isNodeInTopScope,
     getLastDescendant,
     isDanlingSpaceNode,
@@ -20,7 +21,7 @@ import { doc } from "prettier"
 import { templateEmbeddedLangTag } from "../regular"
 import { hasNonEmbedNode, usingTypescript } from "../parser"
 import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "../constants"
-import { util as qingkuaiCompilerUtil, util } from "qingkuai/compiler"
+import { parseDirectiveValue, TemplateAttribute, util as qingkuaiUtils } from "qingkuai/compiler"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
 
@@ -39,7 +40,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
 
     return async (textToDoc, print) => {
         if (!node.parent) {
-            return [printChildren(path, print), hardline]
+            return printChildren(path, print)
         }
 
         if (
@@ -48,6 +49,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
             templateEmbeddedLangTag.test(node.tag)
         ) {
             let parser: Options["parser"]
+            const source = node.children[0]?.rawContent ?? ""
             switch (node.tag) {
                 case "style":
                 case "lang-css":
@@ -71,18 +73,21 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
             }
 
             try {
-                const noContent = !node.content.trim().length
-                const formatedDoc = await textToDoc(node.content, { ...options, parser })
+                const noContent = !source.trim().length
+                const formatedDoc = await textToDoc(source, {
+                    ...options,
+                    parser
+                })
                 return [
-                    printOpeningTagPrefix(node),
-                    group(await printOpeningTag(node, options, textToDoc)),
+                    printStartTagPrefix(node),
+                    group(await printStartTag(node, options, textToDoc)),
                     indent([noContent ? "" : hardline, formatedDoc]),
                     noContent ? "" : hardline,
-                    printClosingTag(node, options),
-                    printClosingTagSuffix(node)
+                    printEndTag(node, options),
+                    printEndTagSuffix(node)
                 ]
             } catch (error: any) {
-                throwEmbedLanguageError(error, node.content, options, node.startTagEndPos.index)
+                throwEmbedLanguageError(error, source, options, node.startTagEndPos.index)
             }
         }
 
@@ -91,11 +96,11 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
         }
 
         if (node.tag === "!") {
-            const originalText = options.originalText.slice(...node.range)
+            const originalText = options.originalText.slice(...getRangeByLoc(node.loc))
             return [
-                printOpeningTagPrefix(node),
+                printStartTagPrefix(node),
                 replaceWithLiteralLine(originalText),
-                printClosingTagSuffix(node)
+                printEndTagSuffix(node)
             ]
         }
 
@@ -112,25 +117,25 @@ async function printElement(
     const node: TemplateNode = path.getNode()
 
     const printTag = async (doc: Doc) => {
-        const openingTag = await printOpeningTag(node, options, textToDoc)
-        return group([group(openingTag), doc, printClosingTag(node, options)])
+        const openingTag = await printStartTag(node, options, textToDoc)
+        return group([group(openingTag), doc, printEndTag(node, options)])
     }
 
     if (isPrettierIgnoreNode(node)) {
         let [start, end] = [node.startTagEndPos.index, node.endTagStartPos.index]
-        if (node.prev && needsToBorrowNextOpeningTagStartMarker(node.prev)) {
+        if (node.prev && needsToBorrowNextStartTagOpeningMarker(node.prev)) {
             start += 1
         }
-        if (node.next && needsToBorrowPrevClosingTagEndMarker(node.next)) {
-            end -= printClosingTagEndMarker(node).length
+        if (node.next && needsToBorrowPrevEndTagClosingMarker(node.next)) {
+            end -= printEndTagClosingMarker(node).length
         }
         return printTag(replaceWithLiteralLine(options.originalText.slice(start, end)))
     }
 
     const printLineAfterChildren = () => {
         const needsToBorrow = node.next
-            ? needsToBorrowPrevClosingTagEndMarker(node.next)
-            : needsToBorrowLastChildClosingTagEndMarker(node.parent)
+            ? needsToBorrowPrevEndTagClosingMarker(node.next)
+            : needsToBorrowLastChildEndTagClosingMarker(node.parent)
         if (needsToBorrow) {
             if (node.lastChild?.hasTrailingSpace && node.lastChild.trailingSpaceSensitive) {
                 return " "
@@ -143,7 +148,7 @@ async function printElement(
         if (
             node.lastChild?.tag === "!" &&
             new RegExp(`\\n[\\t ]{${options.tabWidth * (path.ancestors.length - 1)}}$`, "u").test(
-                node.lastChild.content
+                node.lastChild.rawContent
             )
         ) {
             return ""
@@ -178,27 +183,27 @@ async function printAttribute(
     const printedAttribute: Doc[] = []
 
     for (const attr of node.attributes) {
-        let attrKey = attr.key.raw
+        let attrName = attr.name.raw
         if (node.componentTag) {
             if (options.componentAttributeFormatPreference === "kebab") {
-                attrKey = util.camel2Kebab(attrKey)
+                attrName = qingkuaiUtils.camel2Kebab(attrName)
             } else {
-                attrKey = util.kebab2Camel(attrKey)
+                attrName = qingkuaiUtils.kebab2Camel(attrName)
             }
         }
 
-        if (attr.quote === "none") {
-            printedAttribute.push(attrKey)
+        if (attr.valueEnclosure === "none") {
+            printedAttribute.push(attrName)
             continue
         }
 
         let value: Doc = attr.value.raw
         let quote = options.singleQuote ? "'" : '"'
 
-        if (/[!@#&]/.test(attr.key.raw[0])) {
+        if (/[!@#&]/.test(attr.name.raw[0])) {
             const startSourceIndex = attr.value.loc.start.index
-            if (attr.key.raw === "#for") {
-                value = await printForDirective(textToDoc, value, options, startSourceIndex)
+            if (attr.name.raw === "#for" || attr.name.raw === "#slot") {
+                value = await printPatternKeywordDirective(textToDoc, attr, options)
             } else {
                 value = await printInterpolation(textToDoc, value, options, startSourceIndex)
             }
@@ -209,21 +214,21 @@ async function printAttribute(
             value = [quote, replaceWithLiteralLine(value), quote]
         }
 
-        printedAttribute.push(group([attrKey, "=", value]))
+        printedAttribute.push(group([attrName, "=", value]))
     }
 
     const forceNotToBreak =
         node.tag === "script" &&
         node.attributes.length === 1 &&
-        node.attributes[0].key.raw === "src"
+        node.attributes[0].name.raw === "src"
     const gap = options.singleAttributePerLine && node.attributes[1] ? hardline : line
     const parts: Doc[] = [indent([forceNotToBreak ? " " : line, join(gap, printedAttribute)])]
 
     if (
         forceNotToBreak ||
         options.bracketSameLine ||
-        needsToBorrowParentOpeningTagEndMarker(node.children[0]) ||
-        (node.isSelfClosing && needsToBorrowLastChildClosingTagEndMarker(node.parent))
+        needsToBorrowParentStartTagClosingMarker(node.children[0]) ||
+        (node.isSelfClosing && needsToBorrowLastChildEndTagClosingMarker(node.parent))
     ) {
         return parts.concat(node.isSelfClosing ? " " : "")
     }
@@ -329,37 +334,60 @@ async function printContentOfTextNode(
     textToDoc: EmbedTextToDocFunc,
     options: ParserOptions
 ) {
-    let preContentLen = /^\s*/.exec(node.content)![0].length
-    const docs: Doc[] = [printOpeningTagPrefix(node)]
-
-    const mergeWhitespace = (str: string) => {
-        return join(line, str.replace(/\s+/g, " ").split(" "))
-    }
-
-    for (let content = node.content[node.next ? "trimStart" : "trim"](); content.length; ) {
-        const startBracketIndex = content.indexOf("{")
-        if (startBracketIndex === -1) {
-            docs.push(mergeWhitespace(content))
-            break
-        } else {
-            preContentLen += startBracketIndex + 1
-            docs.push(mergeWhitespace(content.slice(0, startBracketIndex)))
+    const docs: Doc[] = [printStartTagPrefix(node)]
+    for (let i = 0; i < node.content.length; i++) {
+        const contentPart = node.content[i]
+        if (contentPart.isInterpolated) {
+            docs.push(
+                await printInterpolation(
+                    textToDoc,
+                    contentPart.value,
+                    options,
+                    node.loc.start.index
+                )
+            )
+            continue
         }
 
-        const endBracketIndex = qingkuaiCompilerUtil.findEndBracket(content, startBracketIndex + 1)
-        const interpolationText = content.slice(startBracketIndex + 1, endBracketIndex)
-        docs.push(
-            await printInterpolation(
-                textToDoc,
-                interpolationText,
-                options,
-                node.range[0] + preContentLen
-            )
-        )
-        content = content.slice(endBracketIndex + 1)
+        let partValue = contentPart.value
+        if (/\s/.test(partValue[0])) {
+            docs.push(softline)
+        }
+        if (i === 0) {
+            partValue = partValue.trimStart()
+        }
+        if (i === node.content.length - 1 && !node.next) {
+            partValue = partValue.trimEnd()
+        }
+        docs.push(partValue.replace(/\s+/g, " "))
     }
 
-    return fill([...docs, printClosingTagSuffix(node)])
+    // const mergeWhitespace = (str: string) => {
+    //     return join(line, str.replace(/\s+/g, " ").split(" "))
+    // }
+    // for (let content = node.rawContent[node.next ? "trimStart" : "trim"](); content.length; ) {
+    //     const startBracketIndex = content.indexOf("{")
+    //     if (startBracketIndex === -1) {
+    //         docs.push(mergeWhitespace(content))
+    //         break
+    //     } else {
+    //         leadingWhitespacesLen += startBracketIndex + 1
+    //         docs.push(mergeWhitespace(content.slice(0, startBracketIndex)))
+    //     }
+
+    //     const endBracketIndex = qingkuaiCompilerUtil.findEndBracket(content, startBracketIndex + 1)
+    //     const interpolationText = content.slice(startBracketIndex + 1, endBracketIndex)
+    //     docs.push(
+    //         await printInterpolation(
+    //             textToDoc,
+    //             interpolationText,
+    //             options,
+    //             node.loc.start.index + leadingWhitespacesLen
+    //         )
+    //     )
+    //     content = content.slice(endBracketIndex + 1)
+    // }
+    return fill([...docs, printEndTagSuffix(node)])
 }
 
 async function printInterpolation(
@@ -390,54 +418,58 @@ async function printInterpolation(
     return group(["{", formatedDoc, "}"])
 }
 
-async function printForDirective(
+async function printPatternKeywordDirective(
     textToDoc: EmbedTextToDocFunc,
-    text: string,
-    options: ParserOptions,
-    startSourceIndex: number
+    directive: TemplateAttribute,
+    options: ParserOptions
 ) {
+    const rawValue = directive.value.raw
     const textToDocOptions = getInterpolationFormatOptions(options)
-    const ofKeywordIndex = qingkuaiCompilerUtil.findOutOfStringComment(text, " of ")
-    if (ofKeywordIndex === -1) {
-        return printInterpolation(textToDoc, text, options, startSourceIndex)
+    try {
+        const parseRes = parseDirectiveValue(directive)!
+        const valueStartIndex = directive.value.loc.start.index
+        const keyword = directive.name.raw === "#for" ? "of" : "from"
+        if (parseRes.keywordIndex === -1) {
+            return printInterpolation(textToDoc, rawValue, options, valueStartIndex)
+        }
+
+        const contextDoc = await textToDoc(rawValue.slice(0, parseRes.keywordIndex), {
+            ...textToDocOptions,
+            __isQingkuaiForDirective: true
+        })
+        const interpolationDoc = [
+            contextDoc,
+            ` ${keyword} `,
+            await textToDoc(parseRes.base, textToDocOptions)
+        ]
+
+        let formatedInterpolationDoc: Doc
+        if (options.spaceAroundInterpolation) {
+            formatedInterpolationDoc = ifBreak(
+                [indent([line, interpolationDoc]), line],
+                [" ", interpolationDoc, " "]
+            )
+        } else {
+            formatedInterpolationDoc = ifBreak(
+                [indent([softline, interpolationDoc]), softline],
+                interpolationDoc
+            )
+        }
+        return group(["{", formatedInterpolationDoc, "}"])
+    } catch (err) {
+        throwEmbedLanguageError(err, rawValue, options, directive.value.loc.start.index)
     }
-
-    const contextDoc = await textToDoc(text.slice(0, ofKeywordIndex), {
-        ...textToDocOptions,
-        __isQingkuaiForDirective: true
-    })
-    const interpolationDoc = [
-        contextDoc,
-        " of",
-        line,
-        await textToDoc(text.slice(ofKeywordIndex + 4), textToDocOptions)
-    ]
-
-    let formatedInterpolationDoc: Doc
-    if (options.spaceAroundInterpolation) {
-        formatedInterpolationDoc = ifBreak(
-            [indent([line, interpolationDoc]), line],
-            [" ", interpolationDoc, " "]
-        )
-    } else {
-        formatedInterpolationDoc = ifBreak(
-            [indent([softline, interpolationDoc]), softline],
-            interpolationDoc
-        )
-    }
-
-    return group(["{", formatedInterpolationDoc, "}"])
 }
 
 function printBetweenLine(node: TemplateNode) {
-    const [prevNode, nextNode] = [node.prev!, node]
+    const prevNode = node.prev!
 
     // prettier-ignore
     if (
-        (needsToBorrowPrevClosingTagEndMarker(nextNode) && prevNode.isSelfClosing) ||
+        (needsToBorrowPrevEndTagClosingMarker(node) && prevNode.isSelfClosing) ||
         (
-            needsToBorrowNextOpeningTagStartMarker(prevNode) &&
-            (nextNode.isSelfClosing || nextNode.children.length || nextNode.attributes.length)
+            needsToBorrowNextStartTagOpeningMarker(prevNode) &&
+            (node.isSelfClosing || node.children.length || node.attributes.length)
         )
     ) {
         return ""
@@ -445,20 +477,20 @@ function printBetweenLine(node: TemplateNode) {
 
     // prettier-ignore
     if (
-        !nextNode.leadingSpaceSensitive ||
-        preferHardlineAsLeadingSpace(nextNode) ||
+        !node.leadingSpaceSensitive ||
+        preferHardlineAsLeadingSpace(node) ||
         (
             prevNode.lastChild &&
             prevNode.lastChild.lastChild &&
-            needsToBorrowPrevClosingTagEndMarker(nextNode) &&
-            needsToBorrowParentClosingTagStartMarker(prevNode.lastChild) &&
-            needsToBorrowParentClosingTagStartMarker(prevNode.lastChild.lastChild)
+            needsToBorrowPrevEndTagClosingMarker(node) &&
+            needsToBorrowParentEndTagOpeningMarker(prevNode.lastChild) &&
+            needsToBorrowParentEndTagOpeningMarker(prevNode.lastChild.lastChild)
         )
     ){
         return hardline
     }
 
-    return nextNode.hasLeadingSpace ? line : softline
+    return node.hasLeadingSpace ? line : softline
 }
 
 function forceBreakContent(node: TemplateNode) {
@@ -501,83 +533,83 @@ function forceBreakChildren(node: TemplateNode) {
     })
 }
 
-function printClosingTagSuffix(node: TemplateNode) {
-    if (needsToBorrowParentClosingTagStartMarker(node)) {
+function printEndTagSuffix(node: TemplateNode) {
+    if (needsToBorrowParentEndTagOpeningMarker(node)) {
         return `</${node.parent!.tag}`
     }
-    if (needsToBorrowNextOpeningTagStartMarker(node)) {
+    if (needsToBorrowNextStartTagOpeningMarker(node)) {
         return `<${node.next!.tag}`
     }
     return ""
 }
 
-function printOpeningTagPrefix(node: TemplateNode) {
-    if (needsToBorrowPrevClosingTagEndMarker(node)) {
-        return printClosingTagEndMarker(node.prev!)
+function printStartTagPrefix(node: TemplateNode) {
+    if (needsToBorrowPrevEndTagClosingMarker(node)) {
+        return printEndTagClosingMarker(node.prev!)
     }
-    if (needsToBorrowParentOpeningTagEndMarker(node)) {
+    if (needsToBorrowParentStartTagClosingMarker(node)) {
         return ">"
     }
     return ""
 }
 
-function printClosingTagEndMarker(node: TemplateNode) {
+function printEndTagClosingMarker(node: TemplateNode) {
     return node.isSelfClosing ? "/>" : ">"
 }
 
-function printClosingTagPrefix(node: TemplateNode) {
-    if (!needsToBorrowLastChildClosingTagEndMarker(node)) {
+function printEndTagPrefix(node: TemplateNode) {
+    if (!needsToBorrowLastChildEndTagClosingMarker(node)) {
         return ""
     }
-    return printClosingTagEndMarker(lastElem(node.children)!)
+    return printEndTagClosingMarker(lastElem(node.children)!)
 }
 
-async function printOpeningTag(
+async function printStartTag(
     node: TemplateNode,
     options: ParserOptions,
     textToDoc: EmbedTextToDocFunc
 ) {
     return [
-        printOpeningTagStart(node, options),
+        printStartTagOpening(node, options),
         await printAttribute(node, options, textToDoc),
-        node.isSelfClosing ? "" : printOpeningTagEnd(node)
+        node.isSelfClosing ? "" : printStartTagClosing(node)
     ]
 }
 
-function printClosingTag(node: TemplateNode, options: ParserOptions): Doc[] {
+function printEndTag(node: TemplateNode, options: ParserOptions): Doc[] {
     // prettier-ignore
     return [
-        node.isSelfClosing ? "" : printClosingTagStart(node, options),
-        printClosingTagEnd(node)
+        node.isSelfClosing ? "" : printEndTagOpening(node, options),
+        printEndTagClosing(node)
     ]
 }
 
-function printClosingTagStart(node: TemplateNode, options: ParserOptions) {
-    if (needsToBorrowParentClosingTagStartMarker(lastElem(node.children))) {
+function printEndTagOpening(node: TemplateNode, options: ParserOptions) {
+    if (needsToBorrowParentEndTagOpeningMarker(lastElem(node.children))) {
         return ""
     }
-    return [printClosingTagPrefix(node), `</${getPreferedTag(node, options)}`]
+    return [printEndTagPrefix(node), `</${getPreferedTag(node, options)}`]
 }
 
-function printClosingTagEnd(node: TemplateNode) {
+function printEndTagClosing(node: TemplateNode) {
     if (
-        (node.next && needsToBorrowPrevClosingTagEndMarker(node.next)) ||
-        (!node.next && needsToBorrowLastChildClosingTagEndMarker(node.parent))
+        (node.next && needsToBorrowPrevEndTagClosingMarker(node.next)) ||
+        (!node.next && needsToBorrowLastChildEndTagClosingMarker(node.parent))
     ) {
         return ""
     }
-    return [printClosingTagEndMarker(node), printClosingTagSuffix(node)]
+    return [printEndTagClosingMarker(node), printEndTagSuffix(node)]
 }
 
-function printOpeningTagStart(node: TemplateNode, options: ParserOptions) {
-    if (!node.prev || !needsToBorrowNextOpeningTagStartMarker(node.prev)) {
-        return [printOpeningTagPrefix(node), `<${getPreferedTag(node, options)}`]
+function printStartTagOpening(node: TemplateNode, options: ParserOptions) {
+    if (!node.prev || !needsToBorrowNextStartTagOpeningMarker(node.prev)) {
+        return [printStartTagPrefix(node), `<${getPreferedTag(node, options)}`]
     }
     return ""
 }
 
-function printOpeningTagEnd(node: TemplateNode) {
-    return needsToBorrowParentOpeningTagEndMarker(node.children[0]) ? "" : ">"
+function printStartTagClosing(node: TemplateNode) {
+    return needsToBorrowParentStartTagClosingMarker(node.children[0]) ? "" : ">"
 }
 
 function getInterpolationFormatOptions(options: Options) {
@@ -593,10 +625,10 @@ function getPreferedTag(node: TemplateNode, options: ParserOptions) {
     }
 
     const useKebab = options.componentTagFormatPreference === "kebab"
-    return useKebab ? util.camel2Kebab(node.tag, false) : node.componentTag
+    return useKebab ? qingkuaiUtils.camel2Kebab(node.tag, false) : node.componentTag
 }
 
-function needsToBorrowNextOpeningTagStartMarker(node: TemplateNode | undefined | null) {
+function needsToBorrowNextStartTagOpeningMarker(node: TemplateNode | undefined | null) {
     if (!node || isTextOrCommentNode(node.next)) {
         return false
     }
@@ -610,7 +642,7 @@ function needsToBorrowNextOpeningTagStartMarker(node: TemplateNode | undefined |
     )
 }
 
-function needsToBorrowParentOpeningTagEndMarker(node: TemplateNode | undefined | null) {
+function needsToBorrowParentStartTagClosingMarker(node: TemplateNode | undefined | null) {
     return !!(
         node &&
         !node.prev &&
@@ -620,7 +652,7 @@ function needsToBorrowParentOpeningTagEndMarker(node: TemplateNode | undefined |
     )
 }
 
-function needsToBorrowParentClosingTagStartMarker(node: TemplateNode | undefined | null) {
+function needsToBorrowParentEndTagOpeningMarker(node: TemplateNode | undefined | null) {
     return !!(
         node &&
         !node.next &&
@@ -631,7 +663,7 @@ function needsToBorrowParentClosingTagStartMarker(node: TemplateNode | undefined
     )
 }
 
-function needsToBorrowLastChildClosingTagEndMarker(node: TemplateNode | undefined | null) {
+function needsToBorrowLastChildEndTagClosingMarker(node: TemplateNode | undefined | null) {
     if (!node || isTextOrCommentNode(node.lastChild)) {
         return false
     }
@@ -644,7 +676,7 @@ function needsToBorrowLastChildClosingTagEndMarker(node: TemplateNode | undefine
     )
 }
 
-function needsToBorrowPrevClosingTagEndMarker(node: TemplateNode | undefined | null) {
+function needsToBorrowPrevEndTagClosingMarker(node: TemplateNode | undefined | null) {
     if (!node || isTextOrCommentNode(node.prev)) {
         return false
     }
