@@ -91,5 +91,6 @@ export const INLINE_BLOCK_TAGS = new Set<string | undefined | null>([
 ])
 
 export const PRESERVE_TAGS = new Set(["!", "pre", "textarea"])
-
 export const HARDLINE_TAGS = new Set(["script", "select", "!"])
+
+export const PATTERN_KEYWORD_DIRECTIVE = "__qingkuai_pattern_keyword_directive"

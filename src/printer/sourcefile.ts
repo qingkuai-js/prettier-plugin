@@ -20,7 +20,7 @@ import {
 import { doc } from "prettier"
 import { templateEmbeddedLangTag } from "../regular"
 import { hasNonEmbedNode, usingTypescript } from "../parser"
-import { INLINE_TAGS, TABLE_TAGS_DISPLAY } from "../constants"
+import { INLINE_TAGS, PATTERN_KEYWORD_DIRECTIVE, TABLE_TAGS_DISPLAY } from "../constants"
 import { parseDirectiveValue, TemplateAttribute, util as qingkuaiUtils } from "qingkuai/compiler"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
@@ -433,9 +433,9 @@ async function printPatternKeywordDirective(
             return printInterpolation(textToDoc, rawValue, options, valueStartIndex)
         }
 
-        const contextDoc = await textToDoc(rawValue.slice(0, parseRes.keywordIndex), {
+        const contextDoc = await textToDoc(`[${rawValue.slice(0, parseRes.keywordIndex)}]`, {
             ...textToDocOptions,
-            __isQingkuaiForDirective: true
+            [PATTERN_KEYWORD_DIRECTIVE]: true
         })
         const interpolationDoc = [
             contextDoc,

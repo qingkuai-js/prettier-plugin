@@ -384,3 +384,14 @@ test("prefered component attribute format", async () => {
         })
     ).toBe("<Test my-custom-attribute />")
 })
+
+test("context parttern for directive value ends with comma", async () => {
+    expect(await format(`<input #for={item, of 3}   >`)).toBe("<input #for={item of 3} />")
+
+    expect(await format(`<input #for={item, index,  of 3}   >`)).toBe(
+        "<input #for={item, index of 3} />"
+    )
+    expect(await format(`<input #slot={context from  ""}   >`)).toBe(
+        `<input #slot={context from ""} />`
+    )
+})
