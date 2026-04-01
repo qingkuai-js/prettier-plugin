@@ -26,18 +26,19 @@ async function format(source: string, options: Partial<ParserOptions> = {}) {
 // 注意：此方法识别代码使用缩进量量的方法为首行空格字符数量（只有一个换行符的行不会被认为是首行）
 function formatSourceCode(code: string) {
     code = code.replace(/^\r?\n*|\r?\n*$/g, "").trimEnd()
-    return code.replace(
+    const content = code.replace(
         new RegExp(`(?:^|\\r?\\n) {${/ *(?=[^ ])/.exec(code)![0].length}}`, "g"),
         matched => {
             return matched.startsWith("\n") ? "\n" : ""
         }
     )
+    return `${content}\n`
 }
 
 test("top level nodes", async () => {
-    expect(await format("...<a>...</a>")).toBe("...<a>...</a>")
-    expect(await format("<b> ...  </b>  ...")).toBe("<b> ... </b> ...")
-    expect(await format(" ... <u>  ...  </u>")).toBe("... <u> ... </u>")
+    expect(await format("...<a>...</a>")).toBe("...<a>...</a>\n")
+    expect(await format("<b> ...  </b>  ...")).toBe("<b> ... </b> ...\n")
+    expect(await format(" ... <u>  ...  </u>")).toBe("... <u> ... </u>\n")
 
     expect(await format("...<div>...</div>")).toBe(
         formatSourceCode(`
@@ -137,6 +138,16 @@ test("the order and line break of embed langauge block node", async () => {
     expect(await format("<lang-css></lang-css><lang-js></lang-js>")).toBe(
         formatSourceCode(`
             <lang-js></lang-js>
+
+            <lang-css></lang-css>
+        `)
+    )
+
+    expect(await format("<div></div><lang-js></lang-js><lang-css></lang-css>")).toBe(
+        formatSourceCode(`
+            <lang-js></lang-js>
+
+            <div></div>
 
             <lang-css></lang-css>
         `)
@@ -286,20 +297,20 @@ test("the attribute line wrap with setting bracketSameLine option", async () => 
 })
 
 test("interpolation in attribute(dynamic attribute, directive, event)", async () => {
-    expect(await format("<p #for={ xxx }></p>")).toBe("<p #for={xxx}></p>")
+    expect(await format("<p #for={ xxx }></p>")).toBe("<p #for={xxx}></p>\n")
 
     expect(
         await format("<span !value='a' @click=''></span>", {
             spaceAroundInterpolation: true
         })
-    ).toBe("<span !value={ a } @click={}></span>")
+    ).toBe("<span !value={ a } @click={}></span>\n")
 
     expect(await format("<div !class={arr   .slice(  a)}></div>")).toBe(
-        "<div !class={arr.slice(a)}></div>"
+        "<div !class={arr.slice(a)}></div>\n"
     )
 
     expect(await format("<div #for={  item, index of arr. length>10?3:arr.length}></div>")).toBe(
-        "<div #for={item, index of arr.length > 10 ? 3 : arr.length}></div>"
+        "<div #for={item, index of arr.length > 10 ? 3 : arr.length}></div>\n"
     )
 
     expect(await format(`<div @click={()=>{console.log("AAA"); return 10}}></div>`)).toBe(
@@ -333,8 +344,8 @@ test("interpolation in attribute(dynamic attribute, directive, event)", async ()
 })
 
 it("shoule insert whitespace before self-closing tag closing tag end marker", async () => {
-    expect(await format("<br>")).toBe("<br />")
-    expect(await format("<br/>")).toBe("<br />")
+    expect(await format("<br>")).toBe("<br />\n")
+    expect(await format("<br/>")).toBe("<br />\n")
 
     expect(
         await format(`<img class="..." src="https://example.com">`, {
@@ -351,47 +362,47 @@ it("shoule insert whitespace before self-closing tag closing tag end marker", as
 })
 
 test("prefered component tag format", async () => {
-    expect(await format("<my-component></my-component>")).toBe("<myComponent></myComponent>")
+    expect(await format("<my-component></my-component>")).toBe("<myComponent></myComponent>\n")
 
     expect(
         await format("<my-component></my-component>", {
             componentTagFormatPreference: "kebab"
         })
-    ).toBe("<my-component></my-component>")
+    ).toBe("<my-component></my-component>\n")
 
     // just first character is lower case, dont format
     expect(
         await format("<Test></Test>", {
             componentTagFormatPreference: "kebab"
         })
-    ).toBe("<Test></Test>")
+    ).toBe("<Test></Test>\n")
 })
 
 test("prefered component attribute format", async () => {
-    expect(await format("<Test my-custom-attribute/>")).toBe("<Test myCustomAttribute />")
+    expect(await format("<Test my-custom-attribute/>")).toBe("<Test myCustomAttribute />\n")
 
-    expect(await format("<div my-custom-attribute></div>")).toBe("<div my-custom-attribute></div>")
+    expect(await format("<div my-custom-attribute></div>")).toBe("<div my-custom-attribute></div>\n")
 
     expect(
         await format("<Test my-custom-attribute/>", {
             componentAttributeFormatPreference: "camel"
         })
-    ).toBe("<Test myCustomAttribute />")
+    ).toBe("<Test myCustomAttribute />\n")
 
     expect(
         await format("<Test myCustomAttribute/>", {
             componentAttributeFormatPreference: "kebab"
         })
-    ).toBe("<Test my-custom-attribute />")
+    ).toBe("<Test my-custom-attribute />\n")
 })
 
 test("context parttern for directive value ends with comma", async () => {
-    expect(await format(`<input #for={item, of 3}   >`)).toBe("<input #for={item of 3} />")
+    expect(await format(`<input #for={item, of 3}   >`)).toBe("<input #for={item of 3} />\n")
 
     expect(await format(`<input #for={item, index,  of 3}   >`)).toBe(
-        "<input #for={item, index of 3} />"
+        "<input #for={item, index of 3} />\n"
     )
     expect(await format(`<input #slot={context from  ""}   >`)).toBe(
-        `<input #slot={context from ""} />`
+        `<input #slot={context from ""} />\n`
     )
 })
