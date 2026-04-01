@@ -57,7 +57,7 @@ export function parse(text: string, options: ParserOptions) {
     // 排序顶级节点：嵌入脚本块 > 普通节点 > 嵌入样式块
     try {
         parseTemplate(text, {
-            preseveCommentNodes: true,
+            preserveCommentNodes:true,
             preserveBlankTextNodes: false
         }).forEach((node: any) => {
             if (/^(?:!|lang-js|lang-ts)/.test(node.tag)) {
