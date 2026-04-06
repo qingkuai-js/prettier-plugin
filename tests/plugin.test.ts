@@ -378,10 +378,109 @@ test("prefered component tag format", async () => {
     ).toBe("<Test></Test>\n")
 })
 
+test("component tag generic argument format", async () => {
+    expect(
+        await format(
+            formatSourceCode(`
+                <lang-ts></lang-ts>
+                <Comp<T,U>></Comp>
+            `)
+        )
+    ).toBe(
+        formatSourceCode(`
+            <lang-ts></lang-ts>
+
+            <Comp<T, U>></Comp>
+        `)
+    )
+
+    expect(
+        await format(
+            formatSourceCode(`
+                <lang-ts></lang-ts>
+                <my-component<string>></my-component>
+            `)
+        )
+    ).toBe(
+        formatSourceCode(`
+            <lang-ts></lang-ts>
+
+            <myComponent<string>></myComponent>
+        `)
+    )
+
+    expect(
+        await format(
+            formatSourceCode(`
+                <lang-ts></lang-ts>
+                <my-component<T,U>></my-component>
+            `),
+            {
+                componentTagFormatPreference: "kebab"
+            }
+        )
+    ).toBe(
+        formatSourceCode(`
+            <lang-ts></lang-ts>
+
+            <my-component<T, U>></my-component>
+        `)
+    )
+
+    expect(
+        await format(
+            formatSourceCode(`
+                <lang-ts></lang-ts>
+                <Comp<{a:number,b:string[]}> x="1"></Comp>
+            `),
+            {
+                printWidth: 30
+            }
+        )
+    ).toBe(
+        formatSourceCode(`
+            <lang-ts></lang-ts>
+
+            <Comp<
+                    {
+                        a: number;
+                        b: string[];
+                    }
+                >
+                x="1"
+            ></Comp>
+        `)
+    )
+
+    expect(
+        await format(
+            formatSourceCode(`
+                <lang-ts></lang-ts>
+                <Comp<{
+                a: string; b: number}> />
+            `)
+        )
+    ).toBe(
+        formatSourceCode(`
+            <lang-ts></lang-ts>
+
+            <Comp<
+                    {
+                        a: string;
+                        b: number;
+                    }
+                >
+            />
+        `)
+    )
+})
+
 test("prefered component attribute format", async () => {
     expect(await format("<Test my-custom-attribute/>")).toBe("<Test myCustomAttribute />\n")
 
-    expect(await format("<div my-custom-attribute></div>")).toBe("<div my-custom-attribute></div>\n")
+    expect(await format("<div my-custom-attribute></div>")).toBe(
+        "<div my-custom-attribute></div>\n"
+    )
 
     expect(
         await format("<Test my-custom-attribute/>", {

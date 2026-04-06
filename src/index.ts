@@ -3,7 +3,7 @@ import type { SupportLanguage, Parser, Printer, SupportOption } from "prettier"
 import babel from "prettier/plugins/babel"
 import { embed } from "./printer/sourcefile"
 import { locEnd, locStart, parse } from "./parser"
-import { estreePrinter, printJsInterpolation } from "./printer/interpolation"
+import { estreePrinter, printJsInterpolation } from "./printer/expression"
 
 export const languages: Partial<SupportLanguage>[] = [
     {

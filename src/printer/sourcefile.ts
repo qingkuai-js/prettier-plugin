@@ -20,7 +20,12 @@ import {
 import { doc } from "prettier"
 import { templateEmbeddedLangTag } from "../regular"
 import { hasNonEmbedNode, usingTypescript } from "../parser"
-import { INLINE_TAGS, PATTERN_KEYWORD_DIRECTIVE, TABLE_TAGS_DISPLAY } from "../constants"
+import {
+    COMPONENT_GENERIC,
+    INLINE_TAGS,
+    PATTERN_KEYWORD_DIRECTIVE,
+    TABLE_TAGS_DISPLAY
+} from "../constants"
 import { parseDirectiveValue, TemplateAttribute, util as qingkuaiUtils } from "qingkuai/compiler"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
@@ -92,7 +97,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
         }
 
         if (isEmptyString(node.tag)) {
-            return await printContentOfTextNode(node, textToDoc, options)
+            return await printContentOfTextNode(node, options, textToDoc)
         }
 
         if (node.tag === "!") {
@@ -177,7 +182,7 @@ async function printAttribute(
     textToDoc: EmbedTextToDocFunc
 ) {
     if (!node.attributes.length) {
-        return node.isSelfClosing ? " " : ""
+        return node.isSelfClosing ? line : ""
     }
 
     const printedAttribute: Doc[] = []
@@ -203,9 +208,9 @@ async function printAttribute(
         if (/[!@#&]/.test(attr.name.raw[0])) {
             const startSourceIndex = attr.value.loc.start.index
             if (attr.name.raw === "#for" || attr.name.raw === "#slot") {
-                value = await printPatternKeywordDirective(textToDoc, attr, options)
+                value = await printPatternKeywordDirective(attr, options, textToDoc)
             } else {
-                value = await printInterpolation(textToDoc, value, options, startSourceIndex)
+                value = await printInterpolation(value, options, startSourceIndex, textToDoc)
             }
         } else {
             if (attr.value.raw.includes(quote)) {
@@ -331,8 +336,8 @@ function printChildren(path: AstPath, print: PrintFunc) {
 
 async function printContentOfTextNode(
     node: TemplateNode,
-    textToDoc: EmbedTextToDocFunc,
-    options: ParserOptions
+    options: ParserOptions,
+    textToDoc: EmbedTextToDocFunc
 ) {
     const docs: Doc[] = [printStartTagPrefix(node)]
     for (let i = 0; i < node.content.length; i++) {
@@ -340,10 +345,10 @@ async function printContentOfTextNode(
         if (contentPart.isInterpolated) {
             docs.push(
                 await printInterpolation(
-                    textToDoc,
                     contentPart.value,
                     options,
-                    node.loc.start.index
+                    node.loc.start.index,
+                    textToDoc
                 )
             )
             continue
@@ -361,40 +366,14 @@ async function printContentOfTextNode(
         }
         docs.push(partValue.replace(/\s+/g, " "))
     }
-
-    // const mergeWhitespace = (str: string) => {
-    //     return join(line, str.replace(/\s+/g, " ").split(" "))
-    // }
-    // for (let content = node.rawContent[node.next ? "trimStart" : "trim"](); content.length; ) {
-    //     const startBracketIndex = content.indexOf("{")
-    //     if (startBracketIndex === -1) {
-    //         docs.push(mergeWhitespace(content))
-    //         break
-    //     } else {
-    //         leadingWhitespacesLen += startBracketIndex + 1
-    //         docs.push(mergeWhitespace(content.slice(0, startBracketIndex)))
-    //     }
-
-    //     const endBracketIndex = qingkuaiCompilerUtil.findEndBracket(content, startBracketIndex + 1)
-    //     const interpolationText = content.slice(startBracketIndex + 1, endBracketIndex)
-    //     docs.push(
-    //         await printInterpolation(
-    //             textToDoc,
-    //             interpolationText,
-    //             options,
-    //             node.loc.start.index + leadingWhitespacesLen
-    //         )
-    //     )
-    //     content = content.slice(endBracketIndex + 1)
-    // }
     return fill([...docs, printEndTagSuffix(node)])
 }
 
 async function printInterpolation(
-    textToDoc: EmbedTextToDocFunc,
     text: string,
     options: ParserOptions,
-    startSourceIndex: number
+    startSourceIndex: number,
+    textToDoc: EmbedTextToDocFunc
 ) {
     let doc: Doc
     let formatedDoc: Doc
@@ -403,7 +382,7 @@ async function printInterpolation(
         doc = text
     } else {
         try {
-            doc = await textToDoc(text, getInterpolationFormatOptions(options))
+            doc = await textToDoc(text, getExpressionFormatOptions(options))
         } catch (error: any) {
             throwEmbedLanguageError(error, text, options, startSourceIndex)
         }
@@ -419,18 +398,18 @@ async function printInterpolation(
 }
 
 async function printPatternKeywordDirective(
-    textToDoc: EmbedTextToDocFunc,
     directive: TemplateAttribute,
-    options: ParserOptions
+    options: ParserOptions,
+    textToDoc: EmbedTextToDocFunc
 ) {
     const rawValue = directive.value.raw
-    const textToDocOptions = getInterpolationFormatOptions(options)
+    const valueStartIndex = directive.value.loc.start.index
+    const textToDocOptions = getExpressionFormatOptions(options)
     try {
         const parseRes = parseDirectiveValue(directive)!
-        const valueStartIndex = directive.value.loc.start.index
         const keyword = directive.name.raw === "#for" ? "of" : "from"
         if (parseRes.keywordIndex === -1) {
-            return printInterpolation(textToDoc, rawValue, options, valueStartIndex)
+            return printInterpolation(rawValue, options, valueStartIndex, textToDoc)
         }
 
         const contextDoc = await textToDoc(`[${rawValue.slice(0, parseRes.keywordIndex)}]`, {
@@ -457,7 +436,29 @@ async function printPatternKeywordDirective(
         }
         return group(["{", formatedInterpolationDoc, "}"])
     } catch (err) {
-        throwEmbedLanguageError(err, rawValue, options, directive.value.loc.start.index)
+        throwEmbedLanguageError(err, rawValue, options, valueStartIndex + 1)
+    }
+}
+
+async function printComponentGenerics(
+    node: TemplateNode,
+    options: ParserOptions,
+    textToDoc: EmbedTextToDocFunc
+) {
+    if (!node.componentTag || !node.typeArgument) {
+        return ""
+    }
+
+    const source = `_ as T<${node.typeArgument.raw}>`
+    const textToDocOptions = getExpressionFormatOptions(options)
+    try {
+        const genericDoc = await textToDoc(source, {
+            ...textToDocOptions,
+            [COMPONENT_GENERIC]: true
+        })
+        return group(["<", indent([indent([softline, genericDoc]), softline, ">"])])
+    } catch (err) {
+        throwEmbedLanguageError(err, source, options, node.typeArgument.loc.start.index - 7)
     }
 }
 
@@ -570,10 +571,19 @@ async function printStartTag(
     textToDoc: EmbedTextToDocFunc
 ) {
     return [
-        printStartTagOpening(node, options),
+        await printStartTagOpening(node, options, textToDoc),
         await printAttribute(node, options, textToDoc),
         node.isSelfClosing ? "" : printStartTagClosing(node)
     ]
+}
+
+function getPreferedTag(node: TemplateNode, options: ParserOptions) {
+    if (!node.componentTag) {
+        return node.tag
+    }
+    return options.componentTagFormatPreference === "kebab"
+        ? qingkuaiUtils.camel2Kebab(node.tag, false)
+        : qingkuaiUtils.kebab2Camel(node.componentTag)
 }
 
 function printEndTag(node: TemplateNode, options: ParserOptions): Doc[] {
@@ -601,9 +611,17 @@ function printEndTagClosing(node: TemplateNode) {
     return [printEndTagClosingMarker(node), printEndTagSuffix(node)]
 }
 
-function printStartTagOpening(node: TemplateNode, options: ParserOptions) {
+async function printStartTagOpening(
+    node: TemplateNode,
+    options: ParserOptions,
+    textToDoc: EmbedTextToDocFunc
+) {
     if (!node.prev || !needsToBorrowNextStartTagOpeningMarker(node.prev)) {
-        return [printStartTagPrefix(node), `<${getPreferedTag(node, options)}`]
+        return [
+            printStartTagPrefix(node),
+            `<${getPreferedTag(node, options)}`,
+            await printComponentGenerics(node, options, textToDoc)
+        ]
     }
     return ""
 }
@@ -612,20 +630,11 @@ function printStartTagClosing(node: TemplateNode) {
     return needsToBorrowParentStartTagClosingMarker(node.children[0]) ? "" : ">"
 }
 
-function getInterpolationFormatOptions(options: Options) {
+function getExpressionFormatOptions(options: Options) {
     return {
         ...options,
         parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
     }
-}
-
-function getPreferedTag(node: TemplateNode, options: ParserOptions) {
-    if (!node.componentTag || options.componentTagFormatPreference === "none") {
-        return node.tag
-    }
-
-    const useKebab = options.componentTagFormatPreference === "kebab"
-    return useKebab ? qingkuaiUtils.camel2Kebab(node.tag, false) : node.componentTag
 }
 
 function needsToBorrowNextStartTagOpeningMarker(node: TemplateNode | undefined | null) {
