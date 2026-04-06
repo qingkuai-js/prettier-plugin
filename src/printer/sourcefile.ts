@@ -633,7 +633,8 @@ function printStartTagClosing(node: TemplateNode) {
 function getExpressionFormatOptions(options: Options) {
     return {
         ...options,
-        parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
+        parser: "qingkuai-ts-expression"
+        // parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
     }
 }
 
