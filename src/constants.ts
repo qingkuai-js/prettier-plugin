@@ -41,6 +41,17 @@ export const TABLE_TAGS_DISPLAY = [
     }
 ]
 
+export const EMBEDDED_LANG_TO_PARSER: Record<string, string> = {
+    style: "css1",
+    script: "acorn",
+    "lang-js": "acorn",
+    "lang-ts": "babel-ts",
+    "lang-css": "css",
+    "lang-scss": "scss",
+    "lang-sass": "sass",
+    "lang-less": "less"
+}
+
 export const INLINE_TAGS = new Set<string | undefined | null>([
     "a",
     "span",

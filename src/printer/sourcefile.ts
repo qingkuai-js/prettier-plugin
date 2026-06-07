@@ -17,15 +17,16 @@ import {
     throwEmbedLanguageError,
     preferHardlineAsLeadingSpace
 } from "../util"
-import { doc } from "prettier"
-import { templateEmbeddedLangTag } from "../regular"
-import { hasNonEmbedNode, usingTypescript } from "../parser"
 import {
-    COMPONENT_GENERIC,
     INLINE_TAGS,
-    PATTERN_KEYWORD_DIRECTIVE,
-    TABLE_TAGS_DISPLAY
+    COMPONENT_GENERIC,
+    TABLE_TAGS_DISPLAY,
+    EMBEDDED_LANG_TO_PARSER,
+    PATTERN_KEYWORD_DIRECTIVE
 } from "../constants"
+import { doc } from "prettier"
+import { hasNonEmbedNode } from "../parser"
+import { templateEmbeddedLangTag } from "../regular"
 import { parseDirectiveValue, TemplateAttribute, util as qingkuaiUtils } from "qingkuai/compiler"
 
 const { hardline, line, fill, join, indent, softline, group, breakParent, ifBreak } = doc.builders
@@ -53,29 +54,8 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
             node.tag === "script" ||
             templateEmbeddedLangTag.test(node.tag)
         ) {
-            let parser: Options["parser"]
             const source = node.children[0]?.rawContent ?? ""
-            switch (node.tag) {
-                case "style":
-                case "lang-css":
-                    parser = "css"
-                    break
-                case "script":
-                case "lang-js":
-                    parser = "acorn"
-                    break
-                case "lang-ts":
-                    parser = "babel-ts"
-                    break
-                case "lang-scss":
-                    parser = "scss"
-                    break
-                case "lang-less":
-                    parser = "less"
-                    break
-                default:
-                    parser = "css"
-            }
+            const parser = EMBEDDED_LANG_TO_PARSER[node.tag] ?? "css"
 
             try {
                 const noContent = !source.trim().length
@@ -83,6 +63,13 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
                     ...options,
                     parser
                 })
+                if (
+                    !source &&
+                    qingkuaiUtils.isEmbeddedStyleTag(node.tag) &&
+                    node.attributes.some(attr => attr.name.raw === "src")
+                ) {
+                    node.isSelfClosing = true
+                }
                 return [
                     printStartTagPrefix(node),
                     group(await printStartTag(node, options, textToDoc)),
@@ -587,11 +574,10 @@ function getPreferedTag(node: TemplateNode, options: ParserOptions) {
 }
 
 function printEndTag(node: TemplateNode, options: ParserOptions): Doc[] {
-    // prettier-ignore
-    return [
-        node.isSelfClosing ? "" : printEndTagOpening(node, options),
-        printEndTagClosing(node)
-    ]
+    if (node.isSelfClosing) {
+        return [printEndTagClosing(node)]
+    }
+    return [printEndTagOpening(node, options), printEndTagClosing(node)]
 }
 
 function printEndTagOpening(node: TemplateNode, options: ParserOptions) {
@@ -634,7 +620,6 @@ function getExpressionFormatOptions(options: Options) {
     return {
         ...options,
         parser: "qingkuai-ts-expression"
-        // parser: usingTypescript ? "qingkuai-ts-expression" : "qingkuai-js-expression"
     }
 }
 

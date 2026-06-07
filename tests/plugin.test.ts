@@ -4,6 +4,7 @@ import * as prettier from "prettier"
 
 import { resolve } from "path"
 import { it, expect, test } from "vitest"
+import { util as qingkuaiUtils } from "qingkuai/compiler"
 
 const outPath = resolve(import.meta.dirname, "../dist/index.js")
 
@@ -18,24 +19,11 @@ async function format(source: string, options: Partial<ParserOptions> = {}) {
     return ret
 }
 
-// 由于使用模板字符串(反引号)书写源码时会保留所有空格，这导致在想要书写带有缩进的代码字符串时，
-// 字符串内的索引会收到源码文件中缩进层级的影响，或者只能在模板内使用正确的缩进等级，但如果此等级
-// 与源码文件中当前位置等级不一致时会导致阅读体验不好
-//
-// 此方法接受代码文本，并移除第一行的所有前导空格字符，后续其他行会移除与第一行等量的前导空格字符
-// 注意：此方法识别代码使用缩进量量的方法为首行空格字符数量（只有一个换行符的行不会被认为是首行）
-function formatSourceCode(code: string) {
-    code = code.replace(/^\r?\n*|\r?\n*$/g, "").trimEnd()
-    const content = code.replace(
-        new RegExp(`(?:^|\\r?\\n) {${/ *(?=[^ ])/.exec(code)![0].length}}`, "g"),
-        matched => {
-            return matched.startsWith("\n") ? "\n" : ""
-        }
-    )
-    return `${content}\n`
+function formatSourceCode(source: string) {
+    return qingkuaiUtils.formatSourceCode(source) + "\n"
 }
 
-test("top level nodes", async () => {
+test("Top level nodes", async () => {
     expect(await format("...<a>...</a>")).toBe("...<a>...</a>\n")
     expect(await format("<b> ...  </b>  ...")).toBe("<b> ... </b> ...\n")
     expect(await format(" ... <u>  ...  </u>")).toBe("... <u> ... </u>\n")
@@ -48,7 +36,7 @@ test("top level nodes", async () => {
     )
 })
 
-test("borrowing of tag marker", async () => {
+test("Borrowing of tag marker", async () => {
     // needs to borrow parent opening tag end marker
     // needs to borrow closing tag end marker of last child element
     expect(await format("<a>...<div></div></a>")).toBe(
@@ -105,7 +93,7 @@ test("borrowing of tag marker", async () => {
     )
 })
 
-test("the order and line break of embed langauge block node", async () => {
+test("The order and line break of embed langauge block node", async () => {
     expect(
         await format(`
             <!-- a comment -->
@@ -154,7 +142,7 @@ test("the order and line break of embed langauge block node", async () => {
     )
 })
 
-test("the attribute line wrap", async () => {
+test("The attribute line wrap", async () => {
     expect(await format(`<div id="..." class="..."></div>`)).toBe(
         formatSourceCode(`
             <div id="..." class="..."></div>
@@ -223,7 +211,7 @@ test("the attribute line wrap", async () => {
     )
 })
 
-test("the format result of preserve tags", async () => {
+test("The format result of preserve tags", async () => {
     expect(
         await format(
             formatSourceCode(`
@@ -255,7 +243,7 @@ test("the format result of preserve tags", async () => {
     )
 })
 
-test("the attribute line wrap with setting bracketSameLine option", async () => {
+test("The attribute line wrap with setting bracketSameLine option", async () => {
     expect(
         await format(`<div id="..." class="...">...</div>`, {
             bracketSameLine: true,
@@ -296,7 +284,7 @@ test("the attribute line wrap with setting bracketSameLine option", async () => 
     )
 })
 
-test("interpolation in attribute(dynamic attribute, directive, event)", async () => {
+test("Interpolation in attribute(dynamic attribute, directive, event)", async () => {
     expect(await format("<p #for={ xxx }></p>")).toBe("<p #for={xxx}></p>\n")
 
     expect(
@@ -343,7 +331,7 @@ test("interpolation in attribute(dynamic attribute, directive, event)", async ()
     )
 })
 
-it("shoule insert whitespace before self-closing tag closing tag end marker", async () => {
+it("Should insert whitespace before self-closing tag closing tag end marker", async () => {
     expect(await format("<br>")).toBe("<br />\n")
     expect(await format("<br/>")).toBe("<br />\n")
 
@@ -361,8 +349,8 @@ it("shoule insert whitespace before self-closing tag closing tag end marker", as
     )
 })
 
-test("prefered component tag format", async () => {
-    expect(await format("<my-component></my-component>")).toBe("<myComponent></myComponent>\n")
+test("Prefered component tag format", async () => {
+    expect(await format("<my-component></my-component>")).toBe("<MyComponent></MyComponent>\n")
 
     expect(
         await format("<my-component></my-component>", {
@@ -378,7 +366,7 @@ test("prefered component tag format", async () => {
     ).toBe("<Test></Test>\n")
 })
 
-test("component tag generic argument format", async () => {
+test("Component tag generic argument format", async () => {
     expect(
         await format(
             formatSourceCode(`
@@ -405,7 +393,7 @@ test("component tag generic argument format", async () => {
         formatSourceCode(`
             <lang-ts></lang-ts>
 
-            <myComponent<string>></myComponent>
+            <MyComponent<string>></MyComponent>
         `)
     )
 
@@ -475,7 +463,7 @@ test("component tag generic argument format", async () => {
     )
 })
 
-test("prefered component attribute format", async () => {
+test("Prefered component attribute format", async () => {
     expect(await format("<Test my-custom-attribute/>")).toBe("<Test myCustomAttribute />\n")
 
     expect(await format("<div my-custom-attribute></div>")).toBe(
@@ -495,7 +483,7 @@ test("prefered component attribute format", async () => {
     ).toBe("<Test my-custom-attribute />\n")
 })
 
-test("context parttern for directive value ends with comma", async () => {
+test("Context pattern for directive value ends with comma", async () => {
     expect(await format(`<input #for={item, of 3}   >`)).toBe("<input #for={item of 3} />\n")
 
     expect(await format(`<input #for={item, index,  of 3}   >`)).toBe(
@@ -503,5 +491,12 @@ test("context parttern for directive value ends with comma", async () => {
     )
     expect(await format(`<input #slot={context from  ""}   >`)).toBe(
         `<input #slot={context from ""} />\n`
+    )
+})
+
+test("The embedded style tags that has `src` attribute and has no content should be formatted as self-closing tags", async () => {
+    expect(await format(`<lang-css src="./test"></lang-css>`)).toBe(`<lang-css src="./test" />\n`)
+    expect(await format(`<lang-scss src="./test">\n\n  \n</lang-scss>`)).toBe(
+        `<lang-scss src="./test" />\n`
     )
 })
