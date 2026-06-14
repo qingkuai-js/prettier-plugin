@@ -61,15 +61,15 @@ export function parse(text: string, options: ParserOptions) {
             preserveCommentNodes: true,
             preserveBlankTextNodes: false
         }).forEach((node: any) => {
-            if (/^(?:!|lang-js|lang-ts)/.test(node.tag)) {
-                chunks[0].push(node)
+            if (node.tag === "lang-js" || node.tag === "lang-ts") {
                 usingTypescript = node.tag === "lang-ts"
+                chunks[0].push(node)
             } else {
                 chunks[node.isEmbedded ? 2 : 1].push(node)
             }
         })
     } catch (error: any) {
-        // prettier生成错误code frame时需要的列信息为1-based
+        // prettier 生成错误 code frame 时需要的列信息为 1-based
         if (error.loc) {
             error.loc.end.index++
             error.loc.end.column++

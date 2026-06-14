@@ -103,7 +103,6 @@ test("The order and line break of embed langauge block node", async () => {
         `)
     ).toBe(
         formatSourceCode(`
-            <!-- a comment -->
             <lang-js>
                 function test() {
                     console.log("AAA");
@@ -111,6 +110,7 @@ test("The order and line break of embed langauge block node", async () => {
                 }
             </lang-js>
 
+            <!-- a comment -->
             <div>
                 <span> <a> ... </a> </span>
             </div>
@@ -138,6 +138,36 @@ test("The order and line break of embed langauge block node", async () => {
             <div></div>
 
             <lang-css></lang-css>
+        `)
+    )
+
+    // Self-closing embed tags with `src` attribute should also be sorted correctly
+    expect(
+        await format(`
+            <lang-css src />
+            <div></div>
+        `)
+    ).toBe(
+        formatSourceCode(`
+            <div></div>
+
+            <lang-css src />
+        `)
+    )
+
+    expect(
+        await format(`
+            <lang-css src="./style.css" />
+            <lang-js></lang-js>
+            <div></div>
+        `)
+    ).toBe(
+        formatSourceCode(`
+            <lang-js></lang-js>
+
+            <div></div>
+
+            <lang-css src="./style.css" />
         `)
     )
 })
