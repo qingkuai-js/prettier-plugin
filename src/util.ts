@@ -5,6 +5,7 @@ import type { ASTLocation } from "qingkuai/compiler"
 import { doc } from "prettier"
 import { LinesAndColumns } from "lines-and-columns"
 import { codeFrameColumns } from "@babel/code-frame"
+import { util as qingkuaiUtils } from "qingkuai/compiler"
 import { HARDLINE_TAGS, INLINE_TAGS, PRESERVE_TAGS } from "./constants"
 
 export function isNull(v: any): v is null {
@@ -93,6 +94,25 @@ export function preferHardlineAsLeadingSpace(node: TemplateNode) {
         HARDLINE_TAGS.has(node.tag) ||
         (node.prev && preferHardlineAsTrailingSpace(node.prev)) ||
         hasSurroundingLineBreak(node)
+    )
+}
+
+export function shouldTagBeConvertedToSelfClosing(node: TemplateNode) {
+    if (qingkuaiUtils.isEmbeddedStyleTag(node.tag)) {
+        if (!node.attributes.some(attr => attr.name.raw === "src")) {
+            return false
+        }
+    } else if (node.tag !== "slot") {
+        return false
+    }
+    if (node.children.length === 0) {
+        return true
+    }
+    return (
+        node.children.length === 1 &&
+        isEmptyString(node.children[0].tag) &&
+        node.children[0].content.length === 1 &&
+        isEmptyString(getRawContent(node.children[0]).trim())
     )
 }
 

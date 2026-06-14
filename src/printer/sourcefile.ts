@@ -13,6 +13,7 @@ import {
     hasLeadingLineBreak,
     hasTrailingLineBreak,
     isPrettierIgnoreNode,
+    shouldTagBeConvertedToSelfClosing,
     replaceWithLiteralLine,
     throwEmbedLanguageError,
     preferHardlineAsLeadingSpace
@@ -49,6 +50,10 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
             return [printChildren(path, print), hardline]
         }
 
+        if (shouldTagBeConvertedToSelfClosing(node)) {
+            node.isSelfClosing = true
+        }
+
         if (
             node.tag === "style" ||
             node.tag === "script" ||
@@ -63,13 +68,6 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
                     ...options,
                     parser
                 })
-                if (
-                    !source &&
-                    qingkuaiUtils.isEmbeddedStyleTag(node.tag) &&
-                    node.attributes.some(attr => attr.name.raw === "src")
-                ) {
-                    node.isSelfClosing = true
-                }
                 return [
                     printStartTagPrefix(node),
                     group(await printStartTag(node, options, textToDoc)),

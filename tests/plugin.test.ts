@@ -500,3 +500,15 @@ test("The embedded style tags that has `src` attribute and has no content should
         `<lang-scss src="./test" />\n`
     )
 })
+
+test("The empty slot tags should be formatted as self-closing tags", async () => {
+    expect(await format(`<slot></slot>`)).toBe(`<slot />\n`)
+    expect(await format(`<slot name="test"></slot>`)).toBe(`<slot name="test" />\n`)
+    expect(await format(`<slot>\n\n  \n</slot>`)).toBe(`<slot />\n`)
+
+    expect(await format(`<slot>content</slot>`)).toBe(`<slot>content</slot>\n`)
+    expect(await format(`<slot name="test">content</slot>`)).toBe(
+        `<slot name="test">content</slot>\n`
+    )
+    expect(await format(`<slot><div></div></slot>`)).toBe(`<slot><div></div></slot>\n`)
+})
