@@ -4,9 +4,13 @@
 .prettierrc
 
 src
+.husky
+.github
+tests
+scripts
+test-space
 node_modules
 
-test.ts
 tsconfig.json
 sort-test.html
 pnpm-lock.yaml
