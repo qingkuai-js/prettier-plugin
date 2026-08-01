@@ -5,7 +5,7 @@ import { embed } from "./printer/sourcefile"
 import { locEnd, locStart, parse } from "./parser"
 import { estreePrinter, printJsInterpolation } from "./printer/expression"
 
-export const languages: Partial<SupportLanguage>[] = [
+export const languages: SupportLanguage[] = [
     {
         name: "qingkuai",
         parsers: ["qingkuai"],

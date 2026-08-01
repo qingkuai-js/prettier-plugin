@@ -48,6 +48,7 @@ export function parse(text: string, options: ParserOptions) {
         isSelfClosing: false,
         hasLeadingSpace: false,
         hasTrailingSpace: false,
+        hasActualAncestor: false,
         leadingSpaceSensitive: false,
         trailingSpaceSensitive: false,
         startTagEndPos: defaultPosition,
