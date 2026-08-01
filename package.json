@@ -5,8 +5,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/qingkuai-js/prettier-plugin.git",
-    "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/prettier-plugin-qingkuai/syncs'"
+    "url": "git+https://github.com/qingkuai-js/prettier-plugin.git"
   },
   "main": "./dist/index.js",
   "packageManager": "pnpm@9.9.0",
