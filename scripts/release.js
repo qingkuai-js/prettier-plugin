@@ -14,7 +14,7 @@ function readPackageJson() {
 }
 
 function writePackageJson(pkg) {
-    nodeFs.writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 4) + "\n", "utf-8")
+    nodeFs.writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 2) + "\n", "utf-8")
 }
 
 function bumpVersion(version) {
