@@ -6,3 +6,5 @@ test.ts
 node_modules
 sort-test.html
 prettier-plugin-qingkuai-*.tgz
+
+.husky/_

@@ -1,43 +1,56 @@
 {
-  "name": "prettier-plugin-qingkuai",
-  "version": "1.0.35",
-  "license": "MIT",
-  "type": "module",
-  "keywords": [
-    "formatting",
-    "qingkuai",
-    "prettier plugin"
-  ],
-  "main": "./dist/index.js",
-  "scripts": {
-    "dev": "rollup -c -w",
-    "release": "node ./scripts/release.js",
-    "test": "npm run build-base && npx vitest --run",
-    "build": "cross-env BUILD_TYPES=1 npm run build-base",
-    "build-base": "rimraf dist && npx tsc && rollup -c && rimraf dist/types",
-    "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/prettier-plugin-qingkuai/syncs'"
-  },
-  "dependencies": {
-    "@babel/code-frame": "^7.26.2",
-    "lines-and-columns": "^2.0.4"
-  },
-  "devDependencies": {
-    "@types/babel__code-frame": "^7.0.6",
-    "@types/node": "^22.13.1",
-    "cross-env": "^7.0.3",
-    "prettier": "^3.5.3",
-    "qingkuai": "^1.0.46",
-    "rimraf": "^6.0.1",
-    "rollup": "^4.24.0",
-    "rollup-plugin-dts": "^6.1.1",
-    "rollup-plugin-esbuild": "^6.1.1",
-    "tsx": "^4.19.1",
-    "typescript": "^5.6.3",
-    "vitest": "^3.0.5"
-  },
-  "peerDependencies": {
-    "prettier": "^3.5.3",
-    "qingkuai": "^1.0.46"
-  },
-  "description": "prettier plugin for qingkuai(.qk) file formatting"
+    "name": "prettier-plugin-qingkuai",
+    "version": "1.0.40",
+    "license": "MIT",
+    "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/qingkuai-js/prettier-plugin.git",
+        "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/prettier-plugin-qingkuai/syncs'"
+    },
+    "main": "./dist/index.js",
+    "packageManager": "pnpm@9.9.0",
+    "scripts": {
+        "prepare": "husky",
+        "dev": "rollup -c -w",
+        "lint-staged": "lint-staged",
+        "release": "node ./scripts/release.js",
+        "test": "npm run build-base && npx vitest --run",
+        "build": "cross-env BUILD_TYPES=1 npm run build-base",
+        "build-base": "rimraf dist && npx tsc && rollup -c && rimraf dist/types",
+        "postpublish": "curl -X PUT 'https://registry-direct.npmmirror.com/-/package/prettier-plugin-qingkuai/syncs'"
+    },
+    "lint-staged": {
+        "*.{ts,js,mjs,cjs,json,md,yml,yaml}": "prettier --write"
+    },
+    "dependencies": {
+        "@babel/code-frame": "^7.26.2",
+        "lines-and-columns": "^2.0.4"
+    },
+    "devDependencies": {
+        "@types/babel__code-frame": "^7.0.6",
+        "@types/node": "^22.13.1",
+        "cross-env": "^7.0.3",
+        "husky": "^9.1.7",
+        "lint-staged": "^17.3.0",
+        "prettier": "^3.5.3",
+        "qingkuai": "^1.0.46",
+        "rimraf": "^6.0.1",
+        "rollup": "^4.24.0",
+        "rollup-plugin-dts": "^6.1.1",
+        "rollup-plugin-esbuild": "^6.1.1",
+        "tsx": "^4.19.1",
+        "typescript": "^5.6.3",
+        "vitest": "^4.1.10"
+    },
+    "peerDependencies": {
+        "prettier": "^3.5.3",
+        "qingkuai": "^1.0.46"
+    },
+    "keywords": [
+        "formatting",
+        "qingkuai",
+        "prettier plugin"
+    ],
+    "description": "prettier plugin for qingkuai(.qk) file formatting"
 }

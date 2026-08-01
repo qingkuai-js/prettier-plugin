@@ -144,14 +144,14 @@ test("The order and line break of embed langauge block node", async () => {
     // Self-closing embed tags with `src` attribute should also be sorted correctly
     expect(
         await format(`
-            <lang-css src />
+            <lang-css src="./style.css" />
             <div></div>
         `)
     ).toBe(
         formatSourceCode(`
             <div></div>
 
-            <lang-css src />
+            <lang-css src="./style.css" />
         `)
     )
 
