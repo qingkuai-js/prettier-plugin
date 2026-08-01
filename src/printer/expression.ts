@@ -4,6 +4,7 @@ import type { AstPath, ParserOptions } from "prettier"
 import estree from "prettier/plugins/estree"
 
 import { doc } from "prettier"
+import { isUndefined } from "../util"
 import { COMPONENT_GENERIC, PATTERN_KEYWORD_DIRECTIVE } from "../constants"
 
 const { join, line } = doc.builders
@@ -15,7 +16,9 @@ export function printJsInterpolation(path: AstPath, options: ParserOptions, prin
     const optionsAny = options as any
 
     if (optionsAny[COMPONENT_GENERIC] && node.type === "TSAsExpression") {
-        return join([",", line], path.map(print, "typeAnnotation", "typeParameters", "params"))
+        const hasTypeArguments = !isUndefined(node.typeAnnotation.typeArguments)
+        const typeArgsPropName = hasTypeArguments ? "typeArguments" : "typeParameters"
+        return join([",", line], path.map(print, "typeAnnotation", typeArgsPropName, "params"))
     }
 
     if (optionsAny[PATTERN_KEYWORD_DIRECTIVE] && node.type === "ArrayExpression") {
