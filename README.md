@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/qingkuai-js/prettier-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/qingkuai-js/prettier-plugin/actions/workflows/ci.yml)
 
-A [Prettier](https://prettier.io/) plugin for formatting [QingKuai](https://github.com/qingkuai-js) (`.qk`) template files.
+A [Prettier](https://prettier.io/) plugin for formatting [QingKuai](https://github.com/qingkuai-js) (`.qk`) component files.
 
 ## Features
 
