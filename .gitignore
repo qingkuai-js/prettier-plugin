@@ -2,7 +2,7 @@
 .DS_Store
 
 dist
-test.ts
+test-space
 node_modules
 sort-test.html
 prettier-plugin-qingkuai-*.tgz
