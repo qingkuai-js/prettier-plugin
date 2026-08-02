@@ -2,7 +2,7 @@ import type { ParserOptions } from "prettier"
 
 import * as prettier from "prettier"
 
-import { resolve } from "path"
+import { resolve } from "node:path"
 import { it, expect, test } from "vitest"
 import { util as qingkuaiUtils } from "qingkuai/compiler"
 
@@ -541,4 +541,36 @@ test("The empty slot tags should be formatted as self-closing tags", async () =>
         `<slot name="test">content</slot>\n`
     )
     expect(await format(`<slot><div></div></slot>`)).toBe(`<slot><div></div></slot>\n`)
+})
+
+test("The empty slot tags should not be formatted as self-closing tags when `selfCloseEmptySlot` is false", async () => {
+    expect(
+        await format(`<slot></slot>`, {
+            selfCloseEmptySlot: false
+        })
+    ).toBe(`<slot></slot>\n`)
+    expect(
+        await format(`<slot name="test"></slot>`, {
+            selfCloseEmptySlot: false
+        })
+    ).toBe(`<slot name="test"></slot>\n`)
+    expect(
+        await format(`<slot>\n\n  \n</slot>`, {
+            selfCloseEmptySlot: false
+        })
+    ).toBe(`<slot></slot>\n`)
+
+    // 非空 slot 无论选项如何都不转自闭合
+    expect(
+        await format(`<slot>content</slot>`, {
+            selfCloseEmptySlot: false
+        })
+    ).toBe(`<slot>content</slot>\n`)
+
+    // 带 src 的嵌入式 style 标签自闭合不受该选项影响
+    expect(
+        await format(`<lang-css src="./test"></lang-css>`, {
+            selfCloseEmptySlot: false
+        })
+    ).toBe(`<lang-css src="./test" />\n`)
 })

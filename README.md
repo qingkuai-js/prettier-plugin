@@ -45,6 +45,7 @@ npx prettier --write "**/*.qk"
 | Option                               | Type                 | Default   | Description                                                                                         |
 | ------------------------------------ | -------------------- | --------- | --------------------------------------------------------------------------------------------------- |
 | `spaceAroundInterpolation`           | `boolean`            | `false`   | Insert spaces at both ends of interpolation blocks.                                                 |
+| `selfCloseEmptySlot`                 | `boolean`            | `true`    | Convert empty slot tags to self-closing format, like `<slot></slot>` → `<slot />`.                  |
 | `componentTagFormatPreference`       | `"camel" \| "kebab"` | `"camel"` | Preferred component tag format: `<MyComponent>` (camel) or `<my-component>` (kebab).                |
 | `componentAttributeFormatPreference` | `"camel" \| "kebab"` | `"camel"` | Preferred component attribute format: `MyCustomAttribute` (camel) or `my-custom-attribute` (kebab). |
 

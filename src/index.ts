@@ -57,6 +57,13 @@ export const options: Record<string, SupportOption> = {
         category: "format",
         description: "insert spaces at both ends of interpolation block"
     },
+    selfCloseEmptySlot: {
+        type: "boolean",
+        default: true,
+        category: "format",
+        description:
+            "convert empty slot tags to self-closing format, likes: <slot></slot> -> <slot />"
+    },
     componentTagFormatPreference: {
         type: "choice",
         default: "camel",

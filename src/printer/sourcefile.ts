@@ -50,7 +50,7 @@ export function embed(path: AstPath, _options: Options): EmbedReturnValue {
             return [printChildren(path, print), hardline]
         }
 
-        if (shouldTagBeConvertedToSelfClosing(node)) {
+        if (shouldTagBeConvertedToSelfClosing(node, options)) {
             node.isSelfClosing = true
         }
 

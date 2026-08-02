@@ -97,25 +97,6 @@ export function preferHardlineAsLeadingSpace(node: TemplateNode) {
     )
 }
 
-export function shouldTagBeConvertedToSelfClosing(node: TemplateNode) {
-    if (qingkuaiUtils.isEmbeddedStyleTag(node.tag)) {
-        if (!node.attributes.some(attr => attr.name.raw === "src")) {
-            return false
-        }
-    } else if (node.tag !== "slot") {
-        return false
-    }
-    if (node.children.length === 0) {
-        return true
-    }
-    return (
-        node.children.length === 1 &&
-        isEmptyString(node.children[0].tag) &&
-        node.children[0].content.length === 1 &&
-        isEmptyString(getRawContent(node.children[0]).trim())
-    )
-}
-
 export function isNodeRegardedInline(node: TemplateNode | undefined | null) {
     return node && (isEmptyString(node.tag) || INLINE_TAGS.has(node.tag))
 }
@@ -199,4 +180,23 @@ export function throwEmbedLanguageError(
     throw new SyntaxError(`${locMessage}\n${codeFrame}`, {
         cause: error.cause
     })
+}
+
+export function shouldTagBeConvertedToSelfClosing(node: TemplateNode, options?: ParserOptions) {
+    if (qingkuaiUtils.isEmbeddedStyleTag(node.tag)) {
+        if (!node.attributes.some(attr => attr.name.raw === "src")) {
+            return false
+        }
+    } else if (node.tag !== "slot" || options?.selfCloseEmptySlot === false) {
+        return false
+    }
+    if (node.children.length === 0) {
+        return true
+    }
+    return (
+        node.children.length === 1 &&
+        isEmptyString(node.children[0].tag) &&
+        node.children[0].content.length === 1 &&
+        isEmptyString(getRawContent(node.children[0]).trim())
+    )
 }
