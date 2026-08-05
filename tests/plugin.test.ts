@@ -543,34 +543,34 @@ test("The empty slot tags should be formatted as self-closing tags", async () =>
     expect(await format(`<slot><div></div></slot>`)).toBe(`<slot><div></div></slot>\n`)
 })
 
-test("The empty slot tags should not be formatted as self-closing tags when `selfCloseEmptySlot` is false", async () => {
+test("The empty slot tags should not be formatted as self-closing tags when `selfCloseEmptySlotTags` is false", async () => {
     expect(
         await format(`<slot></slot>`, {
-            selfCloseEmptySlot: false
+            selfCloseEmptySlotTags: false
         })
     ).toBe(`<slot></slot>\n`)
     expect(
         await format(`<slot name="test"></slot>`, {
-            selfCloseEmptySlot: false
+            selfCloseEmptySlotTags: false
         })
     ).toBe(`<slot name="test"></slot>\n`)
     expect(
         await format(`<slot>\n\n  \n</slot>`, {
-            selfCloseEmptySlot: false
+            selfCloseEmptySlotTags: false
         })
     ).toBe(`<slot></slot>\n`)
 
     // 非空 slot 无论选项如何都不转自闭合
     expect(
         await format(`<slot>content</slot>`, {
-            selfCloseEmptySlot: false
+            selfCloseEmptySlotTags: false
         })
     ).toBe(`<slot>content</slot>\n`)
 
     // 带 src 的嵌入式 style 标签自闭合不受该选项影响
     expect(
         await format(`<lang-css src="./test"></lang-css>`, {
-            selfCloseEmptySlot: false
+            selfCloseEmptySlotTags: false
         })
     ).toBe(`<lang-css src="./test" />\n`)
 })

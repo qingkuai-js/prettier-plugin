@@ -187,7 +187,7 @@ export function shouldTagBeConvertedToSelfClosing(node: TemplateNode, options?: 
         if (!node.attributes.some(attr => attr.name.raw === "src")) {
             return false
         }
-    } else if (node.tag !== "slot" || options?.selfCloseEmptySlot === false) {
+    } else if (node.tag !== "slot" || options?.selfCloseEmptySlotTags === false) {
         return false
     }
     if (node.children.length === 0) {

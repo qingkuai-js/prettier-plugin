@@ -57,7 +57,7 @@ export const options: Record<string, SupportOption> = {
         category: "format",
         description: "insert spaces at both ends of interpolation block"
     },
-    selfCloseEmptySlot: {
+    selfCloseEmptySlotTags: {
         type: "boolean",
         default: true,
         category: "format",
